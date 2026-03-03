@@ -7,8 +7,7 @@ import models.characters.Result;
 import models.characters.Statistics;
 import models.weapons.AttackResult;
 import models.weapons.Target;
-// import models.weapons.Arsenal;
-// import utils.rng.StatsBudget;
+
 import utils.ui.Ansi;
 
 /**
@@ -81,8 +80,7 @@ public class CombatSystem {
             return Winner.TIE;
         }
 
-        // Guardem estat abans de regenerar per calcular quant s'ha curat / recuperat
-        // mana
+        // Guardem estat abans de regenerar per calcular quant s'ha curat / recuperat mana
         double p1HealthPreRegen = p1Stats.getHealth();
         double p1ManaPreRegen = p1Stats.getMana();
 
@@ -106,6 +104,36 @@ public class CombatSystem {
         printRegenSummary(player2, p2HealthRegen, p2ManaRegen);
 
         return Winner.NONE;
+    }
+
+    /**
+     * Mètode públic per imprimir les barres de vida i mana d'un personatge.
+     * Pensat per reutilitzar-lo com a dependència interna o API pública.
+     *
+     * @param character personatge del qual es vol mostrar l'estat
+     */
+    public static void printStatusBars(Character character) {
+        Statistics stats = character.geStatistics();
+
+        double currentHealth = stats.getHealth();
+        double maxHealth = stats.getMaxHealth();
+
+        double currentMana = stats.getMana();
+        double maxMana = stats.getMaxMana();
+
+        int barSize = 20;
+
+        System.out.println("   ─────────────");
+
+        System.out.printf("Vida: %s %.2f / %.2f%n",
+                buildBar(currentHealth, maxHealth, barSize, Ansi.BRIGHT_RED),
+                currentHealth,
+                maxHealth);
+
+        System.out.printf("Mana: %s %.2f / %.2f%n",
+                buildBar(currentMana, maxMana, barSize, Ansi.BRIGHT_BLUE),
+                currentMana,
+                maxMana);
     }
 
     /**
@@ -147,8 +175,7 @@ public class CombatSystem {
         if (attackerAction != ATTACK) {
             Result defenderResult = resolveAttack(0, defender, defenderAction);
 
-            // Si el defensor ha triat DODGE/DEFEND, tindrà missatge (incloent els
-            // graciosos).
+            // Si el defensor ha triat DODGE/DEFEND, tindrà missatge (incloent els graciosos).
             // Si ha triat una altra cosa, pot ser buit; evitem imprimir línies buides.
             if (defenderResult.message() != null && !defenderResult.message().isBlank()) {
                 System.out.println(defenderResult.message());
@@ -164,8 +191,7 @@ public class CombatSystem {
         // Determinar objectiu real segons AttackResult.target()
         Character realTarget = chooseTarget(attacker, defender, attackResult);
 
-        // Si es fa mal a si mateix: aplicar dany però NO mostrar missatge del dany
-        // rebut.
+        // Si es fa mal a si mateix: aplicar dany però NO mostrar missatge del dany rebut.
         if (realTarget == attacker) {
             // No permetem "esquivar-se a un mateix" ni "bloquejar-se a un mateix":
             // s'aplica el dany directament.
@@ -180,8 +206,8 @@ public class CombatSystem {
         // Si l'objectiu és el defensor, apliquem segons la seva acció
         Result defenderResult = resolveAttack(damage, defender, defenderAction);
 
-        // Si no hi ha dany i tampoc hi ha missatge útil (cas damage<=0 i acció
-        // "default"), només mostrem l'atacant.
+        // Si no hi ha dany i tampoc hi ha missatge útil (cas damage<=0 i acció "default"),
+        // només mostrem l'atacant.
         if (defenderResult.recivied() == -1) {
             System.out.printf("%s %s%n", attacker.getName(), attackerMsg);
             return;
@@ -210,32 +236,9 @@ public class CombatSystem {
      * dany rebut i barres de vida/mana amb els valors actuals.
      */
     private void printRoundSummary(Character character, double damageTaken) {
-
-        var stats = character.geStatistics();
-
-        double currentHealth = stats.getHealth();
-        double maxHealth = stats.getConstitution() * 50.0;
-
-        double currentMana = stats.getMana();
-        double maxMana = stats.getIntelligence() * 30.0;
-
-        int barSize = 20;
-
-        System.out.printf("%s ha rebut %.2f de dany.%n",
-                character.getName(),
-                damageTaken);
-
-        System.out.println("   ─────────────");
-
-        System.out.printf("Vida: %s %.2f / %.2f%n",
-                buildBar(currentHealth, maxHealth, barSize, Ansi.BRIGHT_RED),
-                currentHealth,
-                maxHealth);
-
-        System.out.printf("Mana: %s %.2f / %.2f%n%n",
-                buildBar(currentMana, maxMana, barSize, Ansi.BRIGHT_BLUE),
-                currentMana,
-                maxMana);
+        System.out.printf("%s ha rebut %.2f de dany.%n", character.getName(), damageTaken);
+        printStatusBars(character);
+        System.out.println();
     }
 
     /**
@@ -243,32 +246,13 @@ public class CombatSystem {
      * quant s'ha recuperat i l'estat resultant (barres + valors).
      */
     private void printRegenSummary(Character character, double hpRegen, double manaRegen) {
-        var stats = character.geStatistics();
-
-        double currentHealth = stats.getHealth();
-        double maxHealth = stats.getConstitution() * 50.0;
-
-        double currentMana = stats.getMana();
-        double maxMana = stats.getIntelligence() * 30.0;
-
-        int barSize = 20;
-
         System.out.printf("%s regenera: +%.2f vida, +%.2f mana.%n",
                 character.getName(),
                 Math.max(0, hpRegen),
                 Math.max(0, manaRegen));
 
-        System.out.println("   ─────────────");
-
-        System.out.printf("Vida: %s %.2f / %.2f%n",
-                buildBar(currentHealth, maxHealth, barSize, Ansi.BRIGHT_RED),
-                currentHealth,
-                maxHealth);
-
-        System.out.printf("Mana: %s %.2f / %.2f%n%n",
-                buildBar(currentMana, maxMana, barSize, Ansi.BRIGHT_BLUE),
-                currentMana,
-                maxMana);
+        printStatusBars(character);
+        System.out.println();
     }
 
     /**
@@ -280,7 +264,7 @@ public class CombatSystem {
      * @param color codi ANSI per pintar la barra
      * @return barra amb color + reset; o "[ERROR]" si els valors no són vàlids
      */
-    private String buildBar(double current, double max, int size, String color) {
+    private static String buildBar(double current, double max, int size, String color) {
         if (max <= 0 || max < current)
             return "[ERROR]";
 
@@ -296,15 +280,4 @@ public class CombatSystem {
         return color + bar.toString() + Ansi.RESET;
     }
 
-    // public static void main(String[] args) {
-    //     StatsBudget.Result r = StatsBudget.generate(140);
-
-    //     Character p1 = new Character("a", 2, r.baseStats(), r.breed());
-    //     Character p2 = new Character("b", 2, r.baseStats(), r.breed());
-
-    //     p1.setWeapon(Arsenal.EXPLOSIVE_CROSSBOW.create());
-
-    //     CombatSystem system = new CombatSystem(p1, p2);
-    //     system.play(ATTACK, ATTACK);
-    // }
 }

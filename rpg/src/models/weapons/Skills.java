@@ -11,6 +11,10 @@ import models.characters.Statistics;
  */
 public class Skills {
     private Skills() {}
+    
+    public static AttackResult activeNothing(Weapon weapon, Statistics stats, Random rng) {
+        return weapon.basicAttackWithMessage(stats, rng);
+    }
 
     /**
      * Dispar explosiu: pot impactar a l'enemic o, segons la sort, a un mateix.
@@ -54,5 +58,9 @@ public class Skills {
         }
 
         return new AttackResult(finalDamage, "ha pegat un tir.");
+    }
+
+    public static void passiveNothing(Weapon weapon, Statistics stats, Random rng) {
+        
     }
 }

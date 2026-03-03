@@ -15,6 +15,5 @@ import models.characters.Statistics;
  */
 @FunctionalInterface
 public interface Attack {
-
     AttackResult execute(Weapon weapon, Statistics stats, Random rng);
 }

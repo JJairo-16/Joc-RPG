@@ -1,4 +1,7 @@
 import creator.CharacterCreator;
+import models.characters.Character;
+
+import game.GameLoop;
 
 public class App {
     public static void main(String[] args) {
@@ -7,6 +10,9 @@ public class App {
     }
 
     public void run() {
-        CharacterCreator.createNewCharacter();
+        Character p1 = CharacterCreator.createDebugCharacter();
+        Character p2 = CharacterCreator.createDebugCharacter();
+        GameLoop game = new GameLoop(p1, p2);
+        game.init();
     }
 }

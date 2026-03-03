@@ -18,6 +18,7 @@ public class Character {
 
     private final String name;
     private final int age;
+    private final Breed breed;
 
     private final Statistics stats;
     private Weapon weapon;
@@ -44,6 +45,7 @@ public class Character {
 
         this.name = name;
         this.age = age;
+        this.breed = breed;
         this.stats = new Statistics(effectiveStats);
     }
 
@@ -64,13 +66,15 @@ public class Character {
     }
 
     /**
-     * Prova d'equipar una arma si compleix els requisits de {@link Weapon#canEquip(Statistics)}.
+     * Prova d'equipar una arma si compleix els requisits de
+     * {@link Weapon#canEquip(Statistics)}.
      *
      * @param w arma a equipar
      * @return {@code true} si s'ha equipat; {@code false} si no compleix requisits
      */
     public boolean setWeapon(Weapon w) {
-        if (!w.canEquip(stats)) return false;
+        if (!w.canEquip(stats))
+            return false;
 
         weapon = w;
         return true;
@@ -83,8 +87,7 @@ public class Character {
         if (weapon == null) {
             return new AttackResult(
                     WeaponType.PHYSICAL.getBasicDamage(5, stats),
-                    "ataca amb les mans desnudes."
-            );
+                    "ataca amb les mans desnudes.");
         }
 
         return weapon.attack(stats, rng);
@@ -183,15 +186,13 @@ public class Character {
 
         if (stats[2] < MIN_CONSTITUTION) {
             throw new IllegalArgumentException(
-                    "La constitució (vida) ha de ser com a mínim " + MIN_CONSTITUTION
-            );
+                    "La constitució (vida) ha de ser com a mínim " + MIN_CONSTITUTION);
         }
 
         if (sum != TOTAL_POINTS) {
             throw new IllegalArgumentException(
                     "La suma total de punts ha de ser exactament " + TOTAL_POINTS +
-                            ". Suma actual: " + sum
-            );
+                            ". Suma actual: " + sum);
         }
     }
 
@@ -204,5 +205,9 @@ public class Character {
         }
 
         return effectiveStats;
+    }
+
+    public Breed getBreed() {
+        return breed;
     }
 }

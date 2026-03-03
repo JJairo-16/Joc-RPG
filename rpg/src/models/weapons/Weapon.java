@@ -10,6 +10,7 @@ import models.characters.Statistics;
 public class Weapon {
 
     private final String name;
+    private final String description;
 
     private final int damage;
     private final double criticalProb;
@@ -23,6 +24,7 @@ public class Weapon {
 
     public Weapon(
             String name,
+            String description,
             int damage,
             double criticalProb,
             double criticalDamage,
@@ -31,6 +33,7 @@ public class Weapon {
             double price
     ) {
         this.name = name;
+        this.description = description;
         this.damage = damage;
         this.criticalProb = criticalProb;
         this.criticalDamage = criticalDamage;
@@ -102,5 +105,29 @@ public class Weapon {
     /** Retorna si el tipus d'arma es pot equipar amb aquestes estadístiques. */
     public boolean canEquip(Statistics stats) {
         return type.canEquip(stats);
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public int getBaseDamage() {
+        return damage;
+    }
+
+    public double getCriticalProb() {
+        return criticalProb;
+    }
+
+    public double getCriticalDamage() {
+        return criticalDamage;
+    }
+
+    public WeaponType getType() {
+        return type;
+    }
+
+    public double getManaPrice() {
+        return manaPrice;
     }
 }

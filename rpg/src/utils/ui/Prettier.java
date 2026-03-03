@@ -49,7 +49,7 @@ public class Prettier {
 
     public static void printTitle(String title) {
         String baseFormat = BOLD + MAGENTA;
-        System.out.printf("%s== %s ==%s%n", baseFormat, title, RESET);
+        System.out.printf("%s=== %s ===%s%n", baseFormat, title, RESET);
     }
 
     public static void printTitle(String title, Object... args) {

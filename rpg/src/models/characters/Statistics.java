@@ -25,7 +25,8 @@ public class Statistics {
     /**
      * Construeix les estadístiques a partir d'un array de 7 valors en ordre fix.
      *
-     * @param stats força, destresa, constitució, intel·ligència, saviesa, carisma, sort
+     * @param stats força, destresa, constitució, intel·ligència, saviesa, carisma,
+     *              sort
      */
     public Statistics(int[] stats) {
         this.strength = stats[0];
@@ -78,9 +79,18 @@ public class Statistics {
     public double getMana() {
         return mana;
     }
+    
+    public double getMaxHealth() {
+        return maxHealth;
+    }
+
+    public double getMaxMana() {
+        return maxMana;
+    }
 
     /**
-     * Regenera vida i mana segons constitució i intel·ligència, sense superar els màxims.
+     * Regenera vida i mana segons constitució i intel·ligència, sense superar els
+     * màxims.
      */
     public void reg() {
         double hp = constitution * 3.0;
@@ -88,6 +98,10 @@ public class Statistics {
 
         health = affectClamp(health, hp, maxHealth, 0);
         mana = affectClamp(mana, ma, maxMana, 0);
+    }
+
+    private double affectClamp(double act, double amount, double max, double min) {
+        return Math.clamp(act + amount, min, max);
     }
 
     /**
@@ -103,7 +117,8 @@ public class Statistics {
      * Consumeix mana si n'hi ha prou.
      *
      * @param price cost de mana
-     * @return {@code true} si s'ha pogut pagar; {@code false} si no hi ha mana suficient
+     * @return {@code true} si s'ha pogut pagar; {@code false} si no hi ha mana
+     *         suficient
      */
     public boolean consume(double price) {
         if (price > mana) {
@@ -112,12 +127,5 @@ public class Statistics {
 
         mana -= price;
         return true;
-    }
-
-    /**
-     * Afegeix una quantitat proporcional al màxim i limita el resultat entre min i max.
-     */
-    private double affectClamp(double act, double per, double max, double min) {
-        return Math.clamp(act + max * per, min, max);
     }
 }

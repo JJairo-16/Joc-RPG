@@ -31,8 +31,8 @@ public enum Arsenal {
      */
     EXPLOSIVE_CROSSBOW(
             "Ballesta explosiva",
-            "Una ballesta inestable que converteix cada tret en una aposta: pot esclatar amb força devastadora contra l’enemic… o girar-se contra tu mateix.",
-            120, 0.15, 1.6,
+            "Una ballesta inestable que converteix cada tret en una aposta",
+            80, 0.15, 1.6,
             RANGE,
             Skills::explosiveShot);
 
@@ -60,14 +60,7 @@ public enum Arsenal {
      */
     private Arsenal(String name, String description, int baseDamage, double criticalProb, double criticalDamage,
             WeaponType type, Attack attack) {
-        this.name = name;
-        this.description = description;
-        this.baseDamage = baseDamage;
-        this.criticalProb = criticalProb;
-        this.criticalDamage = criticalDamage;
-        this.type = type;
-        this.attack = attack;
-        this.manaPrice = 0;
+        this(name, description, baseDamage, criticalProb, criticalDamage, type, attack, 0);
     }
 
     /**
@@ -92,7 +85,7 @@ public enum Arsenal {
      * @return arma nova amb les propietats configurades
      */
     public Weapon create() {
-        return new Weapon(name, baseDamage, criticalProb, criticalDamage, type, attack, manaPrice);
+        return new Weapon(name, description, baseDamage, criticalProb, criticalDamage, type, attack, manaPrice);
     }
 
     /**

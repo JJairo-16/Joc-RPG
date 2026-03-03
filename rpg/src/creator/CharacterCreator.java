@@ -101,6 +101,14 @@ public class CharacterCreator {
         return new Character(name, age, gen.stats(), gen.breed());
     }
 
+    private static int id = 1;
+    public static Character createDebugCharacter() {
+        String name = "test" + id++;
+        int age = 12;
+        Generation gen = autoGenerate();
+        return new Character(name, age, gen.stats(), gen.breed());
+    }
+
     /**
      * Registre intern que encapsula el resultat d'una generació:
      * el paquet d'estadístiques (ordre fix) i la raça.

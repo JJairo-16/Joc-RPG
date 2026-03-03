@@ -10,8 +10,8 @@ import models.characters.Statistics;
  */
 public enum WeaponType {
     PHYSICAL(0, 0, 0, 0, 0, 0, 0, "Arma física"),
-    MAGICAL(0, 0, 0, 10, 0, 0, 0, "Arma màgica"),
-    RANGE(7, 10, 0, 0, 0, 0, 0, "Arma de rang");
+    MAGICAL(0, 0, 0, 15, 0, 0, 0, "Arma màgica"),
+    RANGE(7, 15, 0, 0, 0, 0, 0, "Arma de rang");
 
     private final String name;
 

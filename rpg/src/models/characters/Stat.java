@@ -6,21 +6,24 @@ package models.characters;
  */
 public enum Stat {
 
-    STRENGTH,
-    DEXTERITY,
-    CONSTITUTION,
-    INTELLIGENCE,
-    WISDOM(false),
-    CHARISMA(false),
-    LUCK;
+    STRENGTH("Força"),
+    DEXTERITY("Destresa"),
+    CONSTITUTION("Constitució"),
+    INTELLIGENCE("Intel·ligència"),
+    WISDOM("Saviesa", false),
+    CHARISMA("Carisma", false),
+    LUCK("Sort");
 
+    private final String name;
     private final boolean canFocus;
 
-    Stat() {
+    Stat(String name) {
+        this.name = name;
         this.canFocus = true;
     }
 
-    Stat(boolean canFocus) {
+    Stat(String name, boolean canFocus) {
+        this.name = name;
         this.canFocus = canFocus;
     }
 
@@ -45,5 +48,9 @@ public enum Stat {
     /** Indica si aquesta estadística pot rebre focus. */
     public boolean canFocus() {
         return canFocus;
+    }
+
+    public String getName() {
+        return name;
     }
 }

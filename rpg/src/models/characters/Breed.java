@@ -66,6 +66,10 @@ public enum Breed {
         return bonusStat;
     }
 
+    public double bonus() {
+        return STAT_BONUS_BY_BREED - 1.0;
+    }
+
     public String getName() {
         return name;
     }
