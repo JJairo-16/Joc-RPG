@@ -210,4 +210,8 @@ public class Character {
     public Breed getBreed() {
         return breed;
     }
+
+    public Random rng() {
+        return rng;
+    }
 }

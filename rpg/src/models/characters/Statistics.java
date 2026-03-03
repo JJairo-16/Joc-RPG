@@ -25,8 +25,7 @@ public class Statistics {
     /**
      * Construeix les estadístiques a partir d'un array de 7 valors en ordre fix.
      *
-     * @param stats força, destresa, constitució, intel·ligència, saviesa, carisma,
-     *              sort
+     * @param stats força, destresa, constitució, intel·ligència, saviesa, carisma, sort
      */
     public Statistics(int[] stats) {
         this.strength = stats[0];
@@ -40,8 +39,8 @@ public class Statistics {
         this.maxHealth = constitution * 50.0;
         this.maxMana = intelligence * 30.0;
 
-        health = maxHealth;
-        mana = maxMana;
+        this.health = maxHealth;
+        this.mana = maxMana;
     }
 
     public int getStrength() {
@@ -79,7 +78,7 @@ public class Statistics {
     public double getMana() {
         return mana;
     }
-    
+
     public double getMaxHealth() {
         return maxHealth;
     }
@@ -89,19 +88,14 @@ public class Statistics {
     }
 
     /**
-     * Regenera vida i mana segons constitució i intel·ligència, sense superar els
-     * màxims.
+     * Regenera vida i mana segons constitució i intel·ligència, sense superar els màxims.
      */
     public void reg() {
-        double hp = constitution * 3.0;
-        double ma = intelligence * 2.0;
+        double hp = constitution * 2.35;
+        double ma = intelligence * 0.9;
 
         health = affectClamp(health, hp, maxHealth, 0);
         mana = affectClamp(mana, ma, maxMana, 0);
-    }
-
-    private double affectClamp(double act, double amount, double max, double min) {
-        return Math.clamp(act + amount, min, max);
     }
 
     /**
@@ -117,15 +111,53 @@ public class Statistics {
      * Consumeix mana si n'hi ha prou.
      *
      * @param price cost de mana
-     * @return {@code true} si s'ha pogut pagar; {@code false} si no hi ha mana
-     *         suficient
+     * @return {@code true} si s'ha pogut pagar; {@code false} si no hi ha mana suficient
      */
-    public boolean consume(double price) {
+    public boolean consumeMana(double price) {
         if (price > mana) {
             return false;
         }
 
         mana -= price;
         return true;
+    }
+
+    /**
+     * Cura vida fins al màxim i retorna la curació real aplicada.
+     *
+     * @param amount quantitat de curació sol·licitada
+     * @return quantitat real curada
+     */
+    public double heal(double amount) {
+        if (amount <= 0) {
+            return 0;
+        }
+
+        double before = health;
+        health = Math.min(maxHealth, health + amount);
+        return health - before;
+    }
+
+    /**
+     * Restaura mana fins al màxim i retorna la quantitat real restaurada.
+     *
+     * @param amount quantitat de restauració sol·licitada
+     * @return quantitat real restaurada
+     */
+    public double restoreMana(double amount) {
+        if (amount <= 0) {
+            return 0;
+        }
+
+        double before = mana;
+        mana = Math.min(maxMana, mana + amount);
+        return mana - before;
+    }
+
+    /**
+     * Aplica un increment i limita el resultat dins del rang indicat.
+     */
+    private double affectClamp(double act, double amount, double max, double min) {
+        return Math.clamp(act + amount, min, max);
     }
 }

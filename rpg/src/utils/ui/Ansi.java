@@ -9,6 +9,7 @@ public class Ansi {
 
     public static final String RESET = ESC + "0m";
     public static final String BOLD = ESC + "1m";
+    public static final String DIM = ESC + "2m";
 
     public static final String RED = ESC + "31m";
     public static final String GREEN = ESC + "32m";

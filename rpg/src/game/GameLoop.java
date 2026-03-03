@@ -1,23 +1,33 @@
 package game;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import combat.Action;
 import combat.CombatSystem;
 import combat.Winner;
-
 import models.characters.Breed;
 import models.characters.Character;
 import models.characters.Statistics;
 import models.weapons.Arsenal;
 import models.weapons.Weapon;
-
 import utils.input.Menu;
+import utils.input.WeaponMenu;
 import utils.ui.Cleaner;
 import utils.ui.Prettier;
 
+/**
+ * Controla el bucle principal del combat per torns entre dos jugadors.
+ */
 public class GameLoop {
+
+    private static final List<String> OPTIONS = List.of(
+            "Canviar arma",
+            "Atacar",
+            "Defensar-se",
+            "Esquivar",
+            "Veure informació"
+    );
+
     private final Character player1;
     private final Character player2;
 
@@ -27,14 +37,12 @@ public class GameLoop {
     public GameLoop(Character player1, Character player2) {
         this.player1 = player1;
         this.player2 = player2;
-
         this.combatSystem = new CombatSystem(player1, player2);
-
-        List<String> weaponsList = new ArrayList<>(Arsenal.getNamesList());
-        weaponsList.addFirst("Cancelar");
-        weapons = List.copyOf(weaponsList);
     }
 
+    /**
+     * Inicia el combat i el manté en execució fins que hi hagi un vencedor (o empat).
+     */
     public void init() {
         cls.clear();
 
@@ -46,12 +54,14 @@ public class GameLoop {
             cls.clear();
             winner = combatSystem.play(action1, action2);
             Menu.pause();
-
         } while (winner == Winner.NONE);
 
         finish(winner);
     }
 
+    /**
+     * Mostra el resultat final del combat.
+     */
     private void finish(Winner winner) {
         cls.clear();
 
@@ -88,21 +98,15 @@ public class GameLoop {
         System.out.println("====================================");
     }
 
-    private final List<String> options = List.of(
-            "Canviar arma",
-            "Atacar",
-            "Defensar-se",
-            "Esquivar",
-            "Veure informació",
-            "Continuar");
-
+    /**
+     * Gestiona el torn d'un jugador fins que triï una acció vàlida.
+     */
     private Action playTurn(Character player) {
-        Action selected = null;
-        boolean loop = true;
+        Action action = null;
 
         do {
             cls.clear();
-            int option = Menu.getOption(options, "Accions de " + player.getName());
+            int option = Menu.getOption(OPTIONS, "Accions de " + player.getName());
 
             switch (option) {
                 case 1:
@@ -110,44 +114,35 @@ public class GameLoop {
                     break;
 
                 case 2:
-                    selected = Action.ATTACK;
+                    action = Action.ATTACK;
                     break;
 
                 case 3:
-                    selected = Action.DEFEND;
+                    action = Action.DEFEND;
                     break;
 
                 case 4:
-                    selected = Action.DODGE;
+                    action = Action.DODGE;
                     break;
 
                 case 5:
                     cls.clear();
                     showPlayerInfo(player);
-                    break;
-
-                case 6:
-                    if (selected != null)
-                        loop = false;
-                    else
-                        Prettier.warn("Seleccioni una acció a realitzar, si us pau.");
+                    System.out.println();
+                    Menu.pause();
                     break;
 
                 default:
                     break;
             }
+        } while (action == null);
 
-            if (loop) {
-                System.out.println();
-                Menu.pause();
-            }
-        } while (loop);
-
-        return selected;
+        return action;
     }
 
-    private final List<String> weapons;
-
+    /**
+     * Permet al jugador equipar una arma de l'arsenal (amb filtres) si compleix requisits.
+     */
     private void changeWeapon(Character player) {
         Weapon weapon = null;
         boolean loop = true;
@@ -155,29 +150,35 @@ public class GameLoop {
         Statistics stats = player.geStatistics();
         boolean equipped = false;
 
+        // Llista d'armes reals
+        List<Arsenal> entries = Arsenal.getSortedWeapons();
+        WeaponMenu.FilterState filters = new WeaponMenu.FilterState();
+
         do {
             cls.clear();
 
-            int option = Menu.getOption(weapons, "Armes de l'arsenal");
-            if (option == 1) {
-                loop = false;
+            Arsenal selected = WeaponMenu.chooseWeaponEntryWithFilters(
+                    entries,
+                    "Armes de l'arsenal",
+                    stats,
+                    filters
+            );
+
+            if (selected == null) {
+                loop = false; // Cancel·lar
                 continue;
             }
 
-            weapon = Arsenal.getWeaponByIdx(option - 2);
+            weapon = selected.create();
 
             if (weapon.canEquip(stats)) {
                 loop = false;
                 equipped = true;
             } else {
                 Prettier.warn("No compleixes els requisits per equipar aquesta arma.");
-            }
-
-            if (loop) {
                 System.out.println();
                 Menu.pause();
             }
-
         } while (loop);
 
         if (!equipped) {
@@ -189,6 +190,9 @@ public class GameLoop {
         Prettier.info("S'ha equipat l'arma %s.", weapon.getName());
     }
 
+    /**
+     * Mostra la informació del jugador: dades bàsiques, raça, estadístiques i arma equipada.
+     */
     private void showPlayerInfo(Character player) {
         Statistics stats = player.geStatistics();
         Breed breed = player.getBreed();
@@ -223,7 +227,7 @@ public class GameLoop {
 
         System.out.print(sb);
 
-        // Barras visuales (mantengo tu API)
+        // Barres visuals (mantinc la teva API)
         CombatSystem.printStatusBars(player);
         System.out.println();
 

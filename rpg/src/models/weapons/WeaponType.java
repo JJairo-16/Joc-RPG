@@ -9,9 +9,9 @@ import models.characters.Statistics;
  * </p>
  */
 public enum WeaponType {
-    PHYSICAL(0, 0, 0, 0, 0, 0, 0, "Arma física"),
-    MAGICAL(0, 0, 0, 15, 0, 0, 0, "Arma màgica"),
-    RANGE(7, 15, 0, 0, 0, 0, 0, "Arma de rang");
+    PHYSICAL(20, 0, 0, 0, 0, 0, 0, "Arma física"),
+    MAGICAL(0, 0, 0, 20, 0, 0, 0, "Arma màgica"),
+    RANGE(10, 20, 0, 0, 0, 0, 0, "Arma de rang");
 
     private final String name;
 
@@ -39,7 +39,8 @@ public enum WeaponType {
      * Comprova si unes stats compleixen els mínims per equipar aquest tipus d'arma.
      *
      * @param stats estadístiques del personatge
-     * @return {@code true} si compleix tots els mínims; {@code false} en cas contrari
+     * @return {@code true} si compleix tots els mínims; {@code false} en cas
+     *         contrari
      * @throws IllegalArgumentException si {@code stats} és {@code null}
      */
     public boolean canEquip(Statistics stats) {
@@ -57,12 +58,12 @@ public enum WeaponType {
     }
 
     public double getBasicDamage(int inputBase, Statistics stats) {
-        int base = inputBase;
-        
+        double base = inputBase * 1.2;
+
         switch (this) {
-          case PHYSICAL -> base += stats.getStrength();
-          case MAGICAL -> base += stats.getIntelligence();
-          default -> base += stats.getDexterity();
+            case PHYSICAL -> base += stats.getStrength() * 1.2;
+            case MAGICAL -> base += stats.getIntelligence() * 1.2;
+            default -> base += stats.getDexterity() * 1.25;
         }
 
         return round2(base + stats.getDexterity() * 0.2);

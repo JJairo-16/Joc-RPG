@@ -2,25 +2,35 @@ package combat;
 
 import static combat.Action.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import models.characters.Character;
 import models.characters.Result;
 import models.characters.Statistics;
 import models.weapons.AttackResult;
 import models.weapons.Target;
-
+import models.weapons.Weapon;
+import models.weapons.passives.HitContext;
 import utils.ui.Ansi;
 
 /**
  * Sistema de combat per torns amb accions simultànies.
  *
- * <p>Resol dos torns per round (P1→P2 i P2→P1), mostra un resum de dany/estat i,
- * si ningú ha mort, aplica regeneració i en mostra el resultat.</p>
+ * <p>
+ * Resol dos torns per round (P1→P2 i P2→P1), mostra un resum de dany/estat i,
+ * si ningú ha mort, aplica regeneració i en mostra el resultat.
+ * </p>
  *
- * <p>Notes:</p>
+ * <p>
+ * Notes:
+ * </p>
  * <ul>
- *   <li>El dany s'aplica dins {@code Character.dodge/defend/getDamage}.</li>
- *   <li>Si {@code Target.SELF}, l'atacant es fa mal a si mateix però no es mostra missatge del dany rebut.</li>
- *   <li>Amb {@code DODGE}/{@code DEFEND} i dany 0, es preserven els missatges “graciosos”.</li>
+ * <li>El dany s'aplica dins {@code Character.dodge/defend/getDamage}.</li>
+ * <li>Si {@code Target.SELF}, l'atacant es fa mal a si mateix però no es mostra
+ * missatge del dany rebut.</li>
+ * <li>Amb {@code DODGE}/{@code DEFEND} i dany 0, es preserven els missatges
+ * “graciosos”.</li>
  * </ul>
  */
 public class CombatSystem {
@@ -36,11 +46,13 @@ public class CombatSystem {
     /**
      * Executa un round amb les accions dels dos jugadors.
      *
-     * <p>Mostra:</p>
+     * <p>
+     * Mostra:
+     * </p>
      * <ul>
-     *   <li>Log d'accions</li>
-     *   <li>Resum de dany rebut i barres d'estat</li>
-     *   <li>Si segueixen vius, regeneració i nou estat</li>
+     * <li>Log d'accions</li>
+     * <li>Resum de dany rebut i barres d'estat</li>
+     * <li>Si segueixen vius, regeneració i nou estat</li>
      * </ul>
      *
      * @param a1 acció del jugador 1
@@ -55,13 +67,28 @@ public class CombatSystem {
         double p1HealthBefore = p1Stats.getHealth();
         double p2HealthBefore = p2Stats.getHealth();
 
+        List<PendingPassive> pendingPassives = new ArrayList<>();
+
         // Executem torns
-        playPlayerTurn(player1, player2, a1, a2);
-        playPlayerTurn(player2, player1, a2, a1);
+        playPlayerTurn(player1, player2, a1, a2, pendingPassives);
+        playPlayerTurn(player2, player1, a2, a1, pendingPassives);
 
         // Calculem dany total rebut aquest round
-        double p1DamageTaken = p1HealthBefore - p1Stats.getHealth();
-        double p2DamageTaken = p2HealthBefore - p2Stats.getHealth();
+        double p1HealthAfterAttacks = p1Stats.getHealth();
+        double p2HealthAfterAttacks = p2Stats.getHealth();
+
+        double p1DamageTaken = p1HealthBefore - p1HealthAfterAttacks;
+        double p2DamageTaken = p2HealthBefore - p2HealthAfterAttacks;
+
+        if (!pendingPassives.isEmpty()) {
+            System.out.println();
+            for (PendingPassive pp : pendingPassives) {
+                List<String> msgs = pp.weapon().triggerAfterHit(pp.ctx(), pp.rng());
+                for (String msg : msgs) {
+                    System.out.println("  + " + msg);
+                }
+            }
+        }
 
         // Separació visual + resum del round (SENSE regeneració encara)
         System.out.println();
@@ -80,7 +107,8 @@ public class CombatSystem {
             return Winner.TIE;
         }
 
-        // Guardem estat abans de regenerar per calcular quant s'ha curat / recuperat mana
+        // Guardem estat abans de regenerar per calcular quant s'ha curat / recuperat
+        // mana
         double p1HealthPreRegen = p1Stats.getHealth();
         double p1ManaPreRegen = p1Stats.getMana();
 
@@ -137,13 +165,17 @@ public class CombatSystem {
     }
 
     /**
-     * Resolveix l'efecte d'un atac sobre un objectiu segons la seva acció defensiva.
+     * Resolveix l'efecte d'un atac sobre un objectiu segons la seva acció
+     * defensiva.
      *
-     * <p>Amb {@code DODGE}/{@code DEFEND} s'invoca sempre el mètode, encara que el dany sigui 0,
-     * per mantenir els missatges especials.</p>
+     * <p>
+     * Amb {@code DODGE}/{@code DEFEND} s'invoca sempre el mètode, encara que el
+     * dany sigui 0,
+     * per mantenir els missatges especials.
+     * </p>
      *
-     * @param damage dany entrant
-     * @param target objectiu que rep (o intenta evitar) el dany
+     * @param damage       dany entrant
+     * @param target       objectiu que rep (o intenta evitar) el dany
      * @param targetAction acció del target davant l'atac
      * @return resultat (inclou missatge i dany rebut)
      */
@@ -162,20 +194,26 @@ public class CombatSystem {
     /**
      * Executa el torn d'un atacant contra un defensor.
      *
-     * <p>Casos especials:</p>
+     * <p>
+     * Casos especials:
+     * </p>
      * <ul>
-     *   <li>Si l'atacant no ataca, el defensor pot igualment "executar" la seva defensa amb dany 0.</li>
-     *   <li>Si l'atac apunta a {@code SELF}, s'aplica dany a l'atacant sense mostrar el dany rebut.</li>
+     * <li>Si l'atacant no ataca, el defensor pot igualment "executar" la seva
+     * defensa amb dany 0.</li>
+     * <li>Si l'atac apunta a {@code SELF}, s'aplica dany a l'atacant sense mostrar
+     * el dany rebut.</li>
      * </ul>
      */
-    private void playPlayerTurn(Character attacker, Character defender, Action attackerAction, Action defenderAction) {
+    private void playPlayerTurn(Character attacker, Character defender, Action attackerAction, Action defenderAction,
+            List<PendingPassive> pendingPassives) {
 
         // Si l'atacant NO ataca, el defensor igualment pot "executar" la seva acció
         // defensiva (missatge graciós).
         if (attackerAction != ATTACK) {
             Result defenderResult = resolveAttack(0, defender, defenderAction);
 
-            // Si el defensor ha triat DODGE/DEFEND, tindrà missatge (incloent els graciosos).
+            // Si el defensor ha triat DODGE/DEFEND, tindrà missatge (incloent els
+            // graciosos).
             // Si ha triat una altra cosa, pot ser buit; evitem imprimir línies buides.
             if (defenderResult.message() != null && !defenderResult.message().isBlank()) {
                 System.out.println(defenderResult.message());
@@ -191,7 +229,8 @@ public class CombatSystem {
         // Determinar objectiu real segons AttackResult.target()
         Character realTarget = chooseTarget(attacker, defender, attackResult);
 
-        // Si es fa mal a si mateix: aplicar dany però NO mostrar missatge del dany rebut.
+        // Si es fa mal a si mateix: aplicar dany però NO mostrar missatge del dany
+        // rebut.
         if (realTarget == attacker) {
             // No permetem "esquivar-se a un mateix" ni "bloquejar-se a un mateix":
             // s'aplica el dany directament.
@@ -206,7 +245,15 @@ public class CombatSystem {
         // Si l'objectiu és el defensor, apliquem segons la seva acció
         Result defenderResult = resolveAttack(damage, defender, defenderAction);
 
-        // Si no hi ha dany i tampoc hi ha missatge útil (cas damage<=0 i acció "default"),
+        Weapon w = attacker.getWeapon();
+        if (w != null && defenderResult.recivied() > 0) {
+            HitContext ctx = new HitContext(attacker, defender, attackResult, defenderResult,
+                    defenderResult.recivied());
+            pendingPassives.add(new PendingPassive(w, ctx, attacker.rng()));
+        }
+
+        // Si no hi ha dany i tampoc hi ha missatge útil (cas damage<=0 i acció
+        // "default"),
         // només mostrem l'atacant.
         if (defenderResult.recivied() == -1) {
             System.out.printf("%s %s%n", attacker.getName(), attackerMsg);
@@ -220,7 +267,9 @@ public class CombatSystem {
     /**
      * Determina l'objectiu real d'un atac.
      *
-     * <p>Per defecte (target nul o {@code ENEMY}) l'objectiu és el defensor.</p>
+     * <p>
+     * Per defecte (target nul o {@code ENEMY}) l'objectiu és el defensor.
+     * </p>
      *
      * @return {@code defender} si ENEMY (o null), {@code attacker} si SELF
      */
@@ -259,9 +308,9 @@ public class CombatSystem {
      * Construeix una barra proporcional (█/░) per un valor actual i un màxim.
      *
      * @param current valor actual
-     * @param max valor màxim
-     * @param size longitud de la barra
-     * @param color codi ANSI per pintar la barra
+     * @param max     valor màxim
+     * @param size    longitud de la barra
+     * @param color   codi ANSI per pintar la barra
      * @return barra amb color + reset; o "[ERROR]" si els valors no són vàlids
      */
     private static String buildBar(double current, double max, int size, String color) {
@@ -278,6 +327,9 @@ public class CombatSystem {
         bar.append("]");
 
         return color + bar.toString() + Ansi.RESET;
+    }
+
+    private static record PendingPassive(Weapon weapon, HitContext ctx, java.util.Random rng) {
     }
 
 }
