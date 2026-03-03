@@ -30,7 +30,11 @@ import models.characters.*;
  * </p>
  *
  * <p>
- * API pública mínima: només {@link #generate(int, long)}.
+ * API pública:
+ * <ul>
+ * <li>seed fixa: {@link #generate(int, long)}.</li>
+ * <li>seed aleatoria: {@link #generate(int)}.</li>
+ * </ul>
  * </p>
  */
 public final class StatsBudget {

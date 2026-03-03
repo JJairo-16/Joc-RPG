@@ -29,15 +29,15 @@ Cada personatge té:
 
 Els jugadors disposen de **140 punts** per repartir entre:
 
-| Estadística      | Funció principal |
-|------------------|-----------------|
-| Força            | Dany físic i combat cos a cos |
-| Destresa         | Esquiva, precisió i combat a distancia |
-| Constitució      | Vida i resistència |
-| Intel·ligència   | Dany màgic i manà |
-| Saviesa          | Control i percepció |
-| Carisma          | Influència i efectes socials |
-| Sort             | Probabilitat de crítics i efectes especials |
+| Estadística    | Funció principal                            |
+| -------------- | ------------------------------------------- |
+| Força          | Dany físic i combat cos a cos               |
+| Destresa       | Esquiva, precisió i combat a distancia      |
+| Constitució    | Vida i resistència                          |
+| Intel·ligència | Dany màgic i manà                           |
+| Saviesa        | Control i percepció                         |
+| Carisma        | Influència i efectes socials                |
+| Sort           | Probabilitat de crítics i efectes especials |
 
 ---
 
