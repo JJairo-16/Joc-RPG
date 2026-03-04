@@ -27,6 +27,7 @@ public final class HitContext {
 
     /** Fases on poden actuar les passives. */
     public enum Phase {
+        START_TURN,
         BEFORE_ATTACK,
         MODIFY_DAMAGE,
         BEFORE_DEFENSE,

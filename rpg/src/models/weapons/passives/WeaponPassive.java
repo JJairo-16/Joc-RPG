@@ -28,6 +28,7 @@ public interface WeaponPassive {
      */
     default String onPhase(Weapon weapon, HitContext ctx, Random rng, Phase phase) {
         return switch (phase) {
+            case START_TURN -> startTurn(weapon, ctx, rng);
             case BEFORE_ATTACK -> beforeAttack(weapon, ctx, rng);
             case MODIFY_DAMAGE -> modifyDamage(weapon, ctx, rng);
             case BEFORE_DEFENSE -> beforeDefense(weapon, ctx, rng);
@@ -36,6 +37,9 @@ public interface WeaponPassive {
             case END_TURN -> endTurn(weapon, ctx, rng);
         };
     }
+
+    /** Al inici del torn. */
+    default String startTurn(Weapon weapon, HitContext ctx, Random rng) { return null; }
 
     /** Abans de calcular/modificar el dany (ideal per setMeta, checks, etc.). */
     default String beforeAttack(Weapon weapon, HitContext ctx, Random rng) { return null; }
@@ -52,6 +56,6 @@ public interface WeaponPassive {
     /** Després d'un impacte real (ctx.damageDealt > 0). */
     default String afterHit(Weapon weapon, HitContext ctx, Random rng) { return null; }
 
-    /** Final del torn (si vols fer coses “per torn” sense sistema d’estats). */
+    /** Final del torn. */
     default String endTurn(Weapon weapon, HitContext ctx, Random rng) { return null; }
 }

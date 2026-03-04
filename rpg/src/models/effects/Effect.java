@@ -110,6 +110,7 @@ public interface Effect {
 
     default EffectResult onPhase(HitContext ctx, HitContext.Phase phase, Random rng) {
         return switch (phase) {
+            case START_TURN -> startTurn(ctx, rng);
             case BEFORE_ATTACK -> beforeAttack(ctx, rng);
             case MODIFY_DAMAGE -> modifyDamage(ctx, rng);
             case BEFORE_DEFENSE -> beforeDefense(ctx, rng);
@@ -118,6 +119,9 @@ public interface Effect {
             case END_TURN -> endTurn(ctx, rng);
         };
     }
+
+    /** Al inici del torn. */
+    default EffectResult startTurn(HitContext ctx, Random rng) { return EffectResult.none(); }
 
     /** Abans de calcular/modificar el dany (ideal per checks i meta). */
     default EffectResult beforeAttack(HitContext ctx, Random rng) { return EffectResult.none(); }

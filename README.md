@@ -71,6 +71,7 @@ Les habilitats poden incloure:
 - "Ruleta rusa"
 - Multiples atacs per torn
 - Major benefici per major risc
+- Pensament ràpid
 
 ---
 
@@ -83,9 +84,18 @@ El combat és per torns:
    - Atacar (i utilitzar l'habilitat)
    - Defensar-se  
    - Esquivar
-3. Aplicació de regeneració automàtica  
+3. Aplicació de regeneració automàtica
 
 La partida finalitza quan un personatge arriba a 0 de vida.
+
+### Etapes del combat (per pasives)
+
+1. Inici del torn
+2. Abans de l'atac
+3. Modificar dany (durant l'atac)
+4. Després de la defensa (defensar-se o esquivar)
+5. Després d'atacar (després d'un impacte)
+6. Final de torn
 
 ---
 
@@ -94,7 +104,7 @@ La partida finalitza quan un personatge arriba a 0 de vida.
 - Sistema d’esquiva basat en Destresa  
 - Sistema de crítics influenciat per la Sort  
 - Regeneració de vida i manà per torn  
-- Diferenciació entre armes físiques i màgiques  
+- Diferenciació entre armes físiques, màgiques i de rang 
 - Escalat de dany segons estadístiques  
 
 ---
