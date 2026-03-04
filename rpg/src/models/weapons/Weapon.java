@@ -29,6 +29,7 @@ public class Weapon {
 
     // Estat intern per informar del resultat de l'últim atac bàsic.
     private boolean lastWasCrit = false;
+    private double lastAttackDamage = 0;
 
     public Weapon(
             String name,
@@ -108,12 +109,15 @@ public class Weapon {
         double baseDamage = type.getBasicDamage(damage, stats);
         lastWasCrit = rollsCritical(stats, rng);
 
-        if (!lastWasCrit)
+        if (!lastWasCrit) {
+            lastAttackDamage = baseDamage;
             return baseDamage;
+        }
 
         // El crític augmenta amb el multiplicador base + una petita escala amb la sort.
         double multiplier = criticalDamage + stats.getLuck() * 0.01;
-        return round2(baseDamage * multiplier);
+        lastAttackDamage = round2(baseDamage * multiplier);
+        return lastAttackDamage;
     }
 
     /**
@@ -129,6 +133,10 @@ public class Weapon {
 
     public boolean lastWasCritic() {
         return lastWasCrit;
+    }
+
+    public double lastAttackDamage() {
+        return lastAttackDamage;
     }
 
     /** Retorna si el tipus d'arma es pot equipar amb aquestes estadístiques. */

@@ -153,6 +153,7 @@ public class GameLoop {
         // Llista d'armes reals
         List<Arsenal> entries = Arsenal.getSortedWeapons();
         WeaponMenu.FilterState filters = new WeaponMenu.FilterState();
+        filters.setOnlyEquippable(true);
 
         do {
             cls.clear();

@@ -368,4 +368,80 @@ public class Skills {
 
         return new AttackResult(finalDamage, message);
     }
+
+    public static AttackResult chronoWeave(Weapon weapon, Statistics stats, Random rng) {
+
+        final int simulations = 3;
+
+        double[] damages = new double[simulations];
+        boolean[] crits = new boolean[simulations];
+
+        for (int i = 0; i < simulations; i++) {
+            damages[i] = weapon.basicAttack(stats, rng);
+            crits[i] = weapon.lastWasCritic();
+        }
+
+        for (int i = 0; i < simulations - 1; i++) {
+            boolean swapped = false;
+
+            for (int j = i + 1; j < simulations; j++) {
+                if (damages[j] < damages[i]) {
+                    double tmpD = damages[i];
+                    damages[i] = damages[j];
+                    damages[j] = tmpD;
+
+                    boolean tmpC = crits[i];
+                    crits[i] = crits[j];
+                    crits[j] = tmpC;
+
+                    swapped = true;
+                }
+
+                if (!swapped)
+                    break;
+            }
+        }
+
+        // damages[0] = ++
+        // damages[1] = ==
+        // damages[2] = --
+
+        int intelligence = stats.getIntelligence();
+        int luck = stats.getLuck();
+
+        double bestChance = 0.20 + intelligence * 0.005 + luck * 0.003;
+        bestChance = Math.clamp(bestChance, 0.20, 0.60);
+
+        double worstChance = 0.30 - intelligence * 0.004;
+        worstChance = Math.clamp(worstChance, 0.10, 0.30);
+
+        double roll = rng.nextDouble();
+
+        int chosenIndex;
+
+        if (roll < bestChance) {
+            chosenIndex = 2; // ++
+        } else if (roll < bestChance + (1.0 - bestChance - worstChance)) {
+            chosenIndex = 1; // ===
+        } else {
+            chosenIndex = 0; // --
+        }
+
+        double finalDamage = damages[chosenIndex];
+        boolean finalCrit = crits[chosenIndex];
+
+        finalDamage = Math.round(finalDamage * 100.0) / 100.0;
+
+        String message = switch (chosenIndex) {
+            case 2 -> "entreveu múltiples futurs i tria el més favorable.";
+            case 1 -> "teixeix el temps amb resultat estable.";
+            default -> "el temps es distorsiona i pren el pitjor camí possible.";
+        };
+
+        if (finalCrit) {
+            message += " (crític)";
+        }
+
+        return new AttackResult(finalDamage, message);
+    }
 }

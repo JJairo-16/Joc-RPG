@@ -1,5 +1,8 @@
 package models.weapons.passives;
 
+import models.characters.Character;
+import models.characters.Statistics;
+
 /**
  * Fàbrica d'efectes passius d'arma.
  * Conté helpers per crear {@link WeaponPassive} reutilitzables.
@@ -36,6 +39,24 @@ public class Passives {
             ctx.defender().geStatistics().damage(opponentHealth * pct);
 
             return String.format("%s connecta un dany verdader del %.2f%%", ctx.attacker().getName(), pct);
+        };
+    }
+
+    public static WeaponPassive executor(double thresholdLife, double damageBonus) {
+        return (weapon, ctx, rng) -> {
+            Character defender = ctx.defender();
+            Statistics defenderStats = defender.geStatistics();
+
+            double opponentHealth = defenderStats.getHealth() / defenderStats.getMaxHealth();
+
+            if (opponentHealth > thresholdLife)
+                return "";
+
+            double lastDamage = weapon.lastAttackDamage();
+            double attackBonus = lastDamage * damageBonus;
+
+            defenderStats.damage(attackBonus);
+            return String.format("%s ha executat a %s amb %.2f de dany extra", ctx.attacker().getName(), defender.getName(), attackBonus);
         };
     }
 }

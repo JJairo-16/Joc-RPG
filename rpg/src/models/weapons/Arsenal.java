@@ -72,7 +72,24 @@ public enum Arsenal {
             28, 0.16, 1.45,
             RANGE,
             Skills::perforatingThrow,
-        trueHarm(0.003));
+            trueHarm(0.003)),
+    EXECUTIONERS_EDGE(
+            "Sentència Final",
+            "Una espasa concebuda per culminar el combat. "
+                    + "Quan l'enemic es troba al llindar de la derrota, "
+                    + "la seva fulla colpeja amb una determinació implacable.",
+            76, 0.18, 1.4,
+            PHYSICAL,
+            Skills::nothing,
+            executor(0.30, 0.25)),
+    CHRONO_WEAVER_STAFF(
+            "Bastó Tejedor del Tiempo",
+            "Un bastó antic que distorsiona el flux temporal. "
+                    + "Els seus atacs poden repetir-se en un eco del passat.",
+            88, 0.14, 1.60,
+            MAGICAL,
+            Skills::chronoWeave,
+            95);
 
     /*
      * ─────────────────────────────────────────────────────────────
