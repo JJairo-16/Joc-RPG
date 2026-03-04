@@ -1,17 +1,20 @@
 package combat;
 
-import static combat.Action.*;
-
-import java.util.ArrayList;
+import java.util.Random;
 import java.util.List;
+
+import static combat.Action.*;
 
 import models.characters.Character;
 import models.characters.Result;
 import models.characters.Statistics;
+
 import models.weapons.AttackResult;
 import models.weapons.Target;
 import models.weapons.Weapon;
 import models.weapons.passives.HitContext;
+import models.weapons.passives.HitContext.Phase;
+
 import utils.ui.Ansi;
 
 /**
@@ -32,15 +35,33 @@ import utils.ui.Ansi;
  * <li>Amb {@code DODGE}/{@code DEFEND} i dany 0, es preserven els missatges
  * “graciosos”.</li>
  * </ul>
+ *
+ * <p>
+ * Nova arquitectura:
+ * </p>
+ * <ul>
+ * <li>Pipeline per fases per a passius: BEFORE_ATTACK, MODIFY_DAMAGE, ...</li>
+ * <li>Context mutable {@link HitContext} per donar flexibilitat a habilitats i
+ * passives.</li>
+ * </ul>
  */
 public class CombatSystem {
     private final Character player1;
     private final Character player2;
 
+    private final Random combatRng = new Random();
+    private final TurnPriorityPolicy priorityPolicy;
+
     /** Crea un combat 1vs1. */
     public CombatSystem(Character p1, Character p2) {
+        this(p1, p2, new DefaultTurnPriorityPolicy());
+    }
+
+    /** Crea un combat 1vs1. */
+    public CombatSystem(Character p1, Character p2, TurnPriorityPolicy policy) {
         this.player1 = p1;
         this.player2 = p2;
+        this.priorityPolicy = policy;
     }
 
     /**
@@ -67,11 +88,19 @@ public class CombatSystem {
         double p1HealthBefore = p1Stats.getHealth();
         double p2HealthBefore = p2Stats.getHealth();
 
-        List<PendingPassive> pendingPassives = new ArrayList<>();
+        // ── Executem torns segons política de prioritat ───────────────────────────
+        // Nota: requireix aquests camps al CombatSystem:
+        // private final TurnPriorityPolicy priorityPolicy;
+        // private final java.util.Random combatRng = new java.util.Random();
+        boolean p1First = priorityPolicy.player1First(player1, a1, player2, a2, combatRng);
 
-        // Executem torns
-        playPlayerTurn(player1, player2, a1, a2, pendingPassives);
-        playPlayerTurn(player2, player1, a2, a1, pendingPassives);
+        if (p1First) {
+            playPlayerTurn(player1, player2, a1, a2);
+            playPlayerTurn(player2, player1, a2, a1);
+        } else {
+            playPlayerTurn(player2, player1, a2, a1);
+            playPlayerTurn(player1, player2, a1, a2);
+        }
 
         // Calculem dany total rebut aquest round
         double p1HealthAfterAttacks = p1Stats.getHealth();
@@ -79,16 +108,6 @@ public class CombatSystem {
 
         double p1DamageTaken = p1HealthBefore - p1HealthAfterAttacks;
         double p2DamageTaken = p2HealthBefore - p2HealthAfterAttacks;
-
-        if (!pendingPassives.isEmpty()) {
-            System.out.println();
-            for (PendingPassive pp : pendingPassives) {
-                List<String> msgs = pp.weapon().triggerAfterHit(pp.ctx(), pp.rng());
-                for (String msg : msgs) {
-                    System.out.println("  + " + msg);
-                }
-            }
-        }
 
         // Separació visual + resum del round (SENSE regeneració encara)
         System.out.println();
@@ -204,17 +223,13 @@ public class CombatSystem {
      * el dany rebut.</li>
      * </ul>
      */
-    private void playPlayerTurn(Character attacker, Character defender, Action attackerAction, Action defenderAction,
-            List<PendingPassive> pendingPassives) {
+    private void playPlayerTurn(Character attacker, Character defender, Action attackerAction, Action defenderAction) {
 
         // Si l'atacant NO ataca, el defensor igualment pot "executar" la seva acció
-        // defensiva (missatge graciós).
+        // defensiva.
         if (attackerAction != ATTACK) {
             Result defenderResult = resolveAttack(0, defender, defenderAction);
 
-            // Si el defensor ha triat DODGE/DEFEND, tindrà missatge (incloent els
-            // graciosos).
-            // Si ha triat una altra cosa, pot ser buit; evitem imprimir línies buides.
             if (defenderResult.message() != null && !defenderResult.message().isBlank()) {
                 System.out.println(defenderResult.message());
             }
@@ -223,33 +238,63 @@ public class CombatSystem {
 
         // Atac normal
         AttackResult attackResult = attacker.attack();
-        double damage = attackResult.damage();
         String attackerMsg = attackResult.message();
 
         // Determinar objectiu real segons AttackResult.target()
         Character realTarget = chooseTarget(attacker, defender, attackResult);
 
-        // Si es fa mal a si mateix: aplicar dany però NO mostrar missatge del dany
-        // rebut.
+        Weapon w = attacker.getWeapon();
+
+        // SELF: aplicar dany però NO mostrar missatge del dany rebut.
         if (realTarget == attacker) {
-            // No permetem "esquivar-se a un mateix" ni "bloquejar-se a un mateix":
-            // s'aplica el dany directament.
-            if (damage > 0) {
-                attacker.getDamage(damage);
+            double dmg = attackResult.damage();
+            if (dmg > 0) {
+                attacker.getDamage(dmg);
             }
-            // Només mostrem el missatge de l'atac/arma.
             System.out.printf("%s %s%n", attacker.getName(), attackerMsg);
             return;
         }
 
-        // Si l'objectiu és el defensor, apliquem segons la seva acció
-        Result defenderResult = resolveAttack(damage, defender, defenderAction);
+        // ── Pipeline amb context mutable ───────────────────────────
+        HitContext ctx = new HitContext(attacker, defender, w, attacker.rng(), attackerAction, defenderAction);
+        ctx.setAttackResult(attackResult);
 
-        Weapon w = attacker.getWeapon();
-        if (w != null && defenderResult.recivied() > 0) {
-            HitContext ctx = new HitContext(attacker, defender, attackResult, defenderResult,
-                    defenderResult.recivied());
-            pendingPassives.add(new PendingPassive(w, ctx, attacker.rng()));
+        // Metadades útils (context extra per a passives)
+        if (w != null) {
+            ctx.putMeta("CRIT", w.lastWasCritic());
+            ctx.putMeta("WEAPON_NAME", w.getName());
+        } else {
+            ctx.putMeta("CRIT", false);
+            ctx.putMeta("WEAPON_NAME", "Fists");
+        }
+        ctx.putMeta("RAW_DAMAGE", ctx.baseDamage());
+
+        // BEFORE_ATTACK: ideal per marcar tags, checks, etc.
+        if (w != null)
+            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.BEFORE_ATTACK));
+
+        // MODIFY_DAMAGE: aquí es modifica el dany que entrarà a la defensa
+        if (w != null)
+            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.MODIFY_DAMAGE));
+
+        // BEFORE_DEFENSE: informació sobre la defensa imminent
+        if (w != null)
+            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.BEFORE_DEFENSE));
+
+        double damageToResolve = ctx.damageToResolve();
+
+        // Aplicació segons l'acció del defensor
+        Result defenderResult = resolveAttack(damageToResolve, defender, defenderAction);
+        ctx.setDefenderResult(defenderResult);
+        ctx.setDamageDealt(defenderResult.recivied());
+
+        // AFTER_DEFENSE: ja tenim el resultat de defensa (missatge + dany rebut)
+        if (w != null)
+            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.AFTER_DEFENSE));
+
+        // AFTER_HIT: només si hi ha dany real
+        if (w != null && ctx.damageDealt() > 0) {
+            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.AFTER_HIT));
         }
 
         // Si no hi ha dany i tampoc hi ha missatge útil (cas damage<=0 i acció
@@ -277,7 +322,7 @@ public class CombatSystem {
         Target t = attackResult.target();
         if (t == null || t == Target.ENEMY)
             return defender;
-        return attacker; // Target.SELF (o qualsevol altre cas que indiqui "self")
+        return attacker; // Target.SELF
     }
 
     /**
@@ -305,6 +350,19 @@ public class CombatSystem {
     }
 
     /**
+     * Imprimeix missatges de passius en format consistent.
+     */
+    private static void printMsgs(List<String> msgs) {
+        if (msgs == null || msgs.isEmpty())
+            return;
+        for (String msg : msgs) {
+            if (msg != null && !msg.isBlank()) {
+                System.out.println("  + " + msg);
+            }
+        }
+    }
+
+    /**
      * Construeix una barra proporcional (█/░) per un valor actual i un màxim.
      *
      * @param current valor actual
@@ -328,8 +386,4 @@ public class CombatSystem {
 
         return color + bar.toString() + Ansi.RESET;
     }
-
-    private static record PendingPassive(Weapon weapon, HitContext ctx, java.util.Random rng) {
-    }
-
 }

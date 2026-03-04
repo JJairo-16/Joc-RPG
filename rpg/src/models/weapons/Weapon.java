@@ -6,11 +6,12 @@ import java.util.Random;
 
 import models.characters.Statistics;
 import models.weapons.passives.HitContext;
+import models.weapons.passives.HitContext.Phase;
 import models.weapons.passives.WeaponPassive;
 
 /**
  * Representa una arma amb dany base, probabilitat/multiplicador de crític,
- * un atac associat i una llista de passius que s'activen després d'un hit.
+ * un atac associat i una llista de passius que s'activen per fases.
  */
 public class Weapon {
 
@@ -145,10 +146,14 @@ public class Weapon {
     }
 
     /**
-     * Activa tots els passius després d'un hit, en l'ordre en què estan a la
-     * llista.
+     * Activa els passius en una fase concreta.
+     *
+     * <p>
+     * Aquesta és la nova API recomanada. Permet passius per fases i no força
+     * el model "afterHit" com a únic punt d'entrada.
+     * </p>
      */
-    public List<String> triggerAfterHit(HitContext ctx, Random rng) {
+    public List<String> triggerPhase(HitContext ctx, Random rng, Phase phase) {
 
         if (passives == null || passives.isEmpty())
             return List.of();
@@ -156,13 +161,20 @@ public class Weapon {
         List<String> messages = new ArrayList<>();
 
         for (WeaponPassive p : passives) {
-            String msg = p.afterHit(this, ctx, rng);
+            String msg = p.onPhase(this, ctx, rng, phase);
             if (msg != null && !msg.isBlank()) {
                 messages.add(msg);
             }
         }
 
         return messages;
+    }
+
+    /**
+     * Compatibilitat amb l'API antiga: executa la fase {@link Phase#AFTER_HIT}.
+     */
+    public List<String> triggerAfterHit(HitContext ctx, Random rng) {
+        return triggerPhase(ctx, rng, Phase.AFTER_HIT);
     }
 
     // --- Helpers interns ---

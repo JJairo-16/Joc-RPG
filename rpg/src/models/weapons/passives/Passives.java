@@ -1,7 +1,10 @@
 package models.weapons.passives;
 
+import java.util.Random;
+
 import models.characters.Character;
 import models.characters.Statistics;
+import models.weapons.Weapon;
 
 /**
  * Fàbrica d'efectes passius d'arma.
@@ -19,44 +22,68 @@ public class Passives {
      * @return passiu que s'aplica després d'encertar
      */
     public static WeaponPassive lifeSteal(double pct) {
-        return (weapon, ctx, rng) -> {
-            double healAmount = ctx.damageDealt() * pct;
-            double realHealed = ctx.attacker().geStatistics().heal(healAmount);
+        return new WeaponPassive() {
+            @Override
+            public String afterHit(Weapon weapon, HitContext ctx, Random rng) {
+                double healAmount = ctx.damageDealt() * pct;
+                double realHealed = ctx.attacker().geStatistics().heal(healAmount);
 
-            if (realHealed <= 0)
-                return null;
+                if (realHealed <= 0) return null;
 
-            return String.format("%s roba %.1f HP",
-                    ctx.attacker().getName(),
-                    realHealed);
-
+                return String.format("%s roba %.1f HP",
+                        ctx.attacker().getName(),
+                        realHealed);
+            }
         };
     }
 
+    /**
+     * Crea un passiu que aplica dany verdader (percentatge de la vida màxima del rival)
+     * després d'un impacte real.
+     *
+     * @param pct percentatge de vida màxima a convertir en dany (p.ex. 0.003 = 0.3%)
+     */
     public static WeaponPassive trueHarm(double pct) {
-        return (weapon, ctx, rng) -> {
-            double opponentHealth = ctx.defender().geStatistics().getMaxHealth();
-            ctx.defender().geStatistics().damage(opponentHealth * pct);
+        return new WeaponPassive() {
+            @Override
+            public String afterHit(Weapon weapon, HitContext ctx, Random rng) {
+                double opponentMaxHealth = ctx.defender().geStatistics().getMaxHealth();
+                double extra = opponentMaxHealth * pct;
 
-            return String.format("%s connecta un dany verdader del %.2f%%", ctx.attacker().getName(), pct);
+                if (extra <= 0) return null;
+
+                ctx.defender().geStatistics().damage(extra);
+
+                return String.format("%s connecta un dany verdader del %.2f%%",
+                        ctx.attacker().getName(),
+                        pct * 100.0);
+            }
         };
     }
 
+    /**
+     * Passiu d'execució: quan l'enemic està per sota d'un llindar de vida,
+     * augmenta el dany abans de defensar.
+     *
+     * @param thresholdLife ratio de vida (0..1). Ex: 0.30 = 30%
+     * @param damageBonus bonus multiplicatiu extra (0..1). Ex: 0.25 = +25%
+     */
     public static WeaponPassive executor(double thresholdLife, double damageBonus) {
-        return (weapon, ctx, rng) -> {
-            Character defender = ctx.defender();
-            Statistics defenderStats = defender.geStatistics();
+        return new WeaponPassive() {
+            @Override
+            public String modifyDamage(Weapon weapon, HitContext ctx, Random rng) {
+                Character defender = ctx.defender();
+                Statistics defenderStats = defender.geStatistics();
 
-            double opponentHealth = defenderStats.getHealth() / defenderStats.getMaxHealth();
+                double ratio = defenderStats.getHealth() / defenderStats.getMaxHealth();
+                if (ratio > thresholdLife) return null;
 
-            if (opponentHealth > thresholdLife)
-                return "";
+                ctx.multiplyDamage(1.0 + damageBonus);
 
-            double lastDamage = weapon.lastAttackDamage();
-            double attackBonus = lastDamage * damageBonus;
-
-            defenderStats.damage(attackBonus);
-            return String.format("%s ha executat a %s amb %.2f de dany extra", ctx.attacker().getName(), defender.getName(), attackBonus);
+                return String.format("%s prepara una execució (+%.0f%% dany)",
+                        ctx.attacker().getName(),
+                        damageBonus * 100.0);
+            }
         };
     }
 }
