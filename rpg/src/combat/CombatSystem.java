@@ -1,14 +1,15 @@
 package combat;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 import static combat.Action.*;
+import static utils.ui.Ansi.RESET;
 
 import models.characters.Character;
 import models.characters.Result;
 import models.characters.Statistics;
-
 import models.weapons.Arsenal;
 import models.weapons.AttackResult;
 import models.weapons.Target;
@@ -72,6 +73,8 @@ public class CombatSystem {
         this.priorityPolicy = policy;
     }
 
+    boolean x = true;
+
     /**
      * Executa un round amb les accions dels dos jugadors.
      *
@@ -99,14 +102,17 @@ public class CombatSystem {
         // ── Executem torns segons política de prioritat ───────────────────────────
         boolean p1First = priorityPolicy.player1First(player1, a1, player2, a2, combatRng);
 
-        // Header suau del round (no interfereix amb el grimori perquè encara no hi ha prompt)
+        // Header suau del round (no interfereix amb el grimori perquè encara no hi ha
+        // prompt)
         printRoundHeader();
 
         if (p1First) {
             playPlayerTurn(player1, player2, a1, a2);
+            System.out.println();
             playPlayerTurn(player2, player1, a2, a1);
         } else {
             playPlayerTurn(player2, player1, a2, a1);
+            System.out.println();
             playPlayerTurn(player1, player2, a1, a2);
         }
 
@@ -134,7 +140,8 @@ public class CombatSystem {
             return Winner.TIE;
         }
 
-        // Guardem estat abans de regenerar per calcular quant s'ha curat / recuperat mana
+        // Guardem estat abans de regenerar per calcular quant s'ha curat / recuperat
+        // mana
         double p1HealthPreRegen = p1Stats.getHealth();
         double p1ManaPreRegen = p1Stats.getMana();
 
@@ -165,7 +172,6 @@ public class CombatSystem {
     // ───────────────────────────────────────────────────────────────────────────
 
     private static void printRoundHeader() {
-        System.out.println();
         System.out.println(BIG_DIV);
         System.out.println(Ansi.BOLD + "          COMBAT ROUND" + Ansi.RESET);
         System.out.println(BIG_DIV);
@@ -208,6 +214,32 @@ public class CombatSystem {
                 maxMana);
     }
 
+    public static void appendStatusBars(StringBuilder sb, Character character) {
+        Statistics stats = character.geStatistics();
+
+        double currentHealth = stats.getHealth();
+        double maxHealth = stats.getMaxHealth();
+
+        double currentMana = stats.getMana();
+        double maxMana = stats.getMaxMana();
+
+        sb.append("  ").append(Ansi.DARK_GRAY).append("─────────────").append(RESET).append("\n");
+     
+        String hpColor = healthColor(currentHealth, maxHealth);
+
+        sb.append("Vida: ").append(buildBar(currentHealth, maxHealth, BAR_SIZE, hpColor));
+        sb.append(" ").append(round2(currentHealth)).append(" / ").append(round2(maxHealth));
+        sb.append("\n");
+
+        sb.append("Vida: ").append(buildBar(currentMana, maxMana, BAR_SIZE, Ansi.BRIGHT_BLUE));
+        sb.append(" ").append(round2(currentMana)).append(" / ").append(round2(maxMana));
+        sb.append("\n");
+    }
+
+    private static double round2(double n) {
+        return Math.round(n * 100.0) / 100.0;
+    }
+
     private static String healthColor(double current, double max) {
         if (max <= 0)
             return Ansi.BRIGHT_RED;
@@ -226,10 +258,12 @@ public class CombatSystem {
     // ───────────────────────────────────────────────────────────────────────────
 
     /**
-     * Resolveix l'efecte d'un atac sobre un objectiu segons la seva acció defensiva.
+     * Resolveix l'efecte d'un atac sobre un objectiu segons la seva acció
+     * defensiva.
      *
      * <p>
-     * Amb {@code DODGE}/{@code DEFEND} s'invoca sempre el mètode, encara que el dany sigui 0,
+     * Amb {@code DODGE}/{@code DEFEND} s'invoca sempre el mètode, encara que el
+     * dany sigui 0,
      * per mantenir els missatges especials.
      * </p>
      */
@@ -252,18 +286,22 @@ public class CombatSystem {
      * Casos especials:
      * </p>
      * <ul>
-     * <li>Si l'atacant no ataca, el defensor pot igualment "executar" la seva defensa amb dany 0.</li>
-     * <li>Si l'atac apunta a {@code SELF}, s'aplica dany a l'atacant sense mostrar el dany rebut.</li>
+     * <li>Si l'atacant no ataca, el defensor pot igualment "executar" la seva
+     * defensa amb dany 0.</li>
+     * <li>Si l'atac apunta a {@code SELF}, s'aplica dany a l'atacant sense mostrar
+     * el dany rebut.</li>
      * </ul>
      */
     private void playPlayerTurn(Character attacker, Character defender, Action attackerAction, Action defenderAction) {
 
-        // Si l'atacant NO ataca, el defensor igualment pot "executar" la seva acció defensiva.
+        // Si l'atacant NO ataca, el defensor igualment pot "executar" la seva acció
+        // defensiva.
         if (attackerAction != ATTACK) {
             Result defenderResult = resolveAttack(0, defender, defenderAction);
 
-            if (defenderResult.message() != null && !defenderResult.message().isBlank()) {
-                System.out.println(defenderResult.message());
+            String msg = defenderResult.message();
+            if (msg != null && !msg.isBlank()) {
+                System.out.println(msg);
             }
             return;
         }
@@ -284,29 +322,27 @@ public class CombatSystem {
         Character realTarget = chooseTarget(attacker, defender, attackResult);
 
         Weapon w = attacker.getWeapon();
+        boolean hasWeapon = (w != null);
 
         // SELF: aplicar dany però NO mostrar missatge del dany rebut.
         if (realTarget == attacker) {
             double dmg = attackResult.damage();
-            if (dmg > 0) {
+            if (dmg > 0)
                 attacker.getDamage(dmg);
-            }
 
-            // Log més net (no fem "->" perquè no hi ha defensor)
             System.out.printf("%s%s%s %s%n",
                     Ansi.BOLD, attacker.getName(), Ansi.RESET,
                     attackerMsg);
             return;
         }
 
-        // ── Pipeline amb context mutable ───────────────────────────
+        // ── Context ───────────────────────────────────────────────────────────────
         Random attackerRng = attacker.rng();
-        boolean hasWeapon = (w != null);
+        Random defenderRng = defender.rng();
 
         HitContext ctx = new HitContext(attacker, defender, w, attackerRng, attackerAction, defenderAction);
         ctx.setAttackResult(attackResult);
 
-        // Metadades útils (context extra per a passives)
         if (hasWeapon) {
             ctx.putMeta("CRIT", w.lastWasCritic());
             ctx.putMeta("WEAPON_NAME", w.getName());
@@ -316,47 +352,76 @@ public class CombatSystem {
         }
         ctx.putMeta("RAW_DAMAGE", ctx.baseDamage());
 
-        if (hasWeapon) {
-            // BEFORE_ATTACK: ideal per marcar tags, checks, etc.
-            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.BEFORE_ATTACK));
+        // 1) Log principal de l'atacant
+        System.out.printf("%s%s%s %s%n",
+                Ansi.BOLD, attacker.getName(), Ansi.RESET,
+                attackerMsg);
 
-            // MODIFY_DAMAGE: aquí es modifica el dany que entrarà a la defensa
-            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.MODIFY_DAMAGE));
-            
-            // BEFORE_DEFENSE: informació sobre la defensa imminent
-            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.BEFORE_DEFENSE));
-        }
+        // Missatges (reutilitzem la mateixa llista per mantenir ordre i evitar
+        // al·locacions)
+        List<String> msgs = new ArrayList<>();
 
+        // ── START_TURN: NOMÉS el jugador que té el torn (evita consumir 2 cops per
+        // ronda) ──
+        attacker.triggerEffects(ctx, Phase.START_TURN, attackerRng, msgs);
+        printMsgs(msgs);
+        msgs.clear();
+
+        // ── BEFORE_ATTACK / MODIFY_DAMAGE / BEFORE_DEFENSE: efectes d'ambdós +
+        // passives arma ──
+        attacker.triggerEffects(ctx, Phase.BEFORE_ATTACK, attackerRng, msgs);
+        defender.triggerEffects(ctx, Phase.BEFORE_ATTACK, defenderRng, msgs);
+        if (hasWeapon)
+            w.triggerPhase(ctx, attackerRng, Phase.BEFORE_ATTACK, msgs);
+
+        attacker.triggerEffects(ctx, Phase.MODIFY_DAMAGE, attackerRng, msgs);
+        defender.triggerEffects(ctx, Phase.MODIFY_DAMAGE, defenderRng, msgs);
+        if (hasWeapon)
+            w.triggerPhase(ctx, attackerRng, Phase.MODIFY_DAMAGE, msgs);
+
+        attacker.triggerEffects(ctx, Phase.BEFORE_DEFENSE, attackerRng, msgs);
+        defender.triggerEffects(ctx, Phase.BEFORE_DEFENSE, defenderRng, msgs);
+        if (hasWeapon)
+            w.triggerPhase(ctx, attackerRng, Phase.BEFORE_DEFENSE, msgs);
+
+        printMsgs(msgs);
+        msgs.clear();
+
+        // ── Resoldre defensa ──────────────────────────────────────────────────────
         double damageToResolve = ctx.damageToResolve();
 
-        // Aplicació segons l'acció del defensor
         Result defenderResult = resolveAttack(damageToResolve, defender, defenderAction);
         ctx.setDefenderResult(defenderResult);
         ctx.setDamageDealt(defenderResult.recivied());
 
-        // AFTER_DEFENSE: ja tenim el resultat de defensa (missatge + dany rebut)
+        // Mostrar resultat de defensa si toca
+        if (defenderResult.recivied() != -1) {
+            String msg = defenderResult.message();
+            if (msg != null && !msg.isBlank()) {
+                System.out.println(Ansi.DARK_GRAY + "  -> " + Ansi.RESET + msg);
+            }
+        }
+
+        // ── AFTER_DEFENSE / AFTER_HIT: efectes d'ambdós + passives arma ───────────
+        attacker.triggerEffects(ctx, Phase.AFTER_DEFENSE, attackerRng, msgs);
+        defender.triggerEffects(ctx, Phase.AFTER_DEFENSE, defenderRng, msgs);
         if (hasWeapon)
-            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.AFTER_DEFENSE));
+            w.triggerPhase(ctx, attackerRng, Phase.AFTER_DEFENSE, msgs);
 
-        // AFTER_HIT: només si hi ha dany real
-        if (hasWeapon && ctx.damageDealt() > 0) {
-            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.AFTER_HIT));
+        if (ctx.damageDealt() > 0) {
+            attacker.triggerEffects(ctx, Phase.AFTER_HIT, attackerRng, msgs);
+            defender.triggerEffects(ctx, Phase.AFTER_HIT, defenderRng, msgs);
+            if (hasWeapon)
+                w.triggerPhase(ctx, attackerRng, Phase.AFTER_HIT, msgs);
         }
 
-        // Si no hi ha dany i tampoc hi ha missatge útil, només mostrem l'atacant.
-        if (defenderResult.recivied() == -1) {
-            System.out.printf("%s%s%s %s%n",
-                    Ansi.BOLD, attacker.getName(), Ansi.RESET,
-                    attackerMsg);
-            return;
-        }
+        printMsgs(msgs);
+        msgs.clear();
 
-        // Log final (més llegible)
-        System.out.printf("%s%s%s %s %s->%s %s%n",
-                Ansi.BOLD, attacker.getName(), Ansi.RESET,
-                attackerMsg,
-                Ansi.DARK_GRAY, Ansi.RESET,
-                defenderResult.message());
+        // ── END_TURN: NOMÉS el jugador que té el torn (tick duració/cooldown 1 cop per
+        // torn) ──
+        attacker.triggerEffects(ctx, Phase.END_TURN, attackerRng, msgs);
+        printMsgs(msgs);
     }
 
     private static boolean isGrimori(Weapon w) {
@@ -412,6 +477,8 @@ public class CombatSystem {
         System.out.println();
     }
 
+    private static StringBuilder msgList = new StringBuilder();
+
     /**
      * Imprimeix missatges de passius en format consistent.
      */
@@ -419,11 +486,23 @@ public class CombatSystem {
         if (msgs == null || msgs.isEmpty())
             return;
 
+        StringBuilder sb = msgList;
+        sb.setLength(0);
+
         for (String msg : msgs) {
-            if (msg != null && !msg.isBlank()) {
-                System.out.println("  + " + msg);
+            if (msg == null || msg.isBlank())
+                continue;
+
+            if (msg.charAt(0) == '-') {
+                sb.append("  ").append(Ansi.RED).append("-").append(Ansi.RESET);
+                sb.append(" ").append(msg.substring(1).trim()).append("\n");
+            } else {
+                sb.append("  ").append(Ansi.GREEN).append("+").append(Ansi.RESET);
+                sb.append(" ").append(msg).append("\n");
             }
         }
+
+        System.out.println(sb.toString());
     }
 
     /**
@@ -439,6 +518,8 @@ public class CombatSystem {
         int filled = (int) Math.round(ratio * size);
 
         StringBuilder bar = new StringBuilder("[");
+        bar.ensureCapacity(size + 1);
+
         for (int i = 0; i < size; i++) {
             bar.append(i < filled ? "█" : "░");
         }

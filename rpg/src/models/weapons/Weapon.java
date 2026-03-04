@@ -158,20 +158,40 @@ public class Weapon {
      * </p>
      */
     public List<String> triggerPhase(HitContext ctx, Random rng, Phase phase) {
-
         if (passives == null || passives.isEmpty())
             return List.of();
 
         List<String> messages = new ArrayList<>();
+        triggerPhase(ctx, rng, phase, messages);
+
+        return messages;
+    }
+
+    /**
+     * Activa els passius en una fase concreta.
+     *
+     * <p>
+     * Aquesta és la nova API recomanada. Permet passius per fases i no força
+     * el model "afterHit" com a únic punt d'entrada.
+     * </p>
+     */
+    public void triggerPhase(HitContext ctx, Random rng, Phase phase, List<String> out) {
+        if (passives == null || passives.isEmpty())
+            return;
 
         for (WeaponPassive p : passives) {
             String msg = p.onPhase(this, ctx, rng, phase);
             if (msg != null && !msg.isBlank()) {
-                messages.add(msg);
+                out.add(msg);
             }
         }
+    }
 
-        return messages;
+    /**
+     * Compatibilitat amb l'API antiga: executa la fase {@link Phase#AFTER_HIT}.
+     */
+    public void triggerAfterHit(HitContext ctx, Random rng, List<String> out) {
+        triggerPhase(ctx, rng, Phase.AFTER_HIT, out);
     }
 
     /**

@@ -5,7 +5,6 @@ import static utils.ui.Ansi.*;
 public class Prettier {
     private Prettier() {
     }
-
     
     private static final String INFO_ICO = CYAN + BOLD + "[i]" + RESET;
     private static final String WARN_ICO = ORANGE + BOLD + "[WARN]" + RESET;
@@ -54,6 +53,12 @@ public class Prettier {
 
     public static void printTitle(String title, Object... args) {
         printTitle(format(title, args));
+    }
+
+    public static void appendTitle(StringBuilder sb, String title) {
+        sb.append(BOLD).append(MAGENTA);
+        sb.append("=== ").append(title).append(" ===");
+        sb.append(RESET).append("\n");
     }
 
 }

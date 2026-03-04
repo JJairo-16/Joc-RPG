@@ -279,11 +279,26 @@ public class Character {
      * Retorna missatges per log i elimina els efectes expirats.
      * </p>
      */
-    public List<String> triggerEffects(HitContext ctx, HitContext.Phase phase, java.util.Random rng) {
+    public List<String> triggerEffects(HitContext ctx, HitContext.Phase phase, Random rng) {
         if (effects.isEmpty())
             return List.of();
 
         List<String> messages = new ArrayList<>();
+        triggerEffects(ctx, phase, rng, messages);
+
+        return messages;
+    }
+
+    /**
+     * Executa els efectes del personatge en una fase del combat.
+     *
+     * <p>
+     * Retorna missatges per log i elimina els efectes expirats.
+     * </p>
+     */
+    public void triggerEffects(HitContext ctx, HitContext.Phase phase, Random rng, List<String> out) {
+        if (effects.isEmpty())
+            return;
 
         for (Effect e : effects) {
             if (!e.isActive())
@@ -291,14 +306,12 @@ public class Character {
 
             EffectResult r = e.onPhase(ctx, phase, rng);
             if (r != null && r.message() != null && !r.message().isBlank()) {
-                messages.add(r.message());
+                out.add(r.message());
             }
         }
 
         // Neteja d'expirats (després d'executar)
         cleanupExpiredEffects();
-
-        return messages;
     }
 
     /**

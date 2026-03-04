@@ -37,7 +37,7 @@ public enum Arsenal {
     ARCANE_DISRUPTION_STAFF(
             "Bastó de la disrupció arcana",
             "Un bastó inestable que canalitza una explosió d'energia pura. Pot devastar... o dissipar-se sense efecte.",
-            120, 0.08, 1.8,
+            120, 0.08, 1.5,
             MAGICAL,
             Skills::arcaneDisruption,
             200),

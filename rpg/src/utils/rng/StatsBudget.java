@@ -71,6 +71,21 @@ public final class StatsBudget {
         public String toString() {
             return "Result[ocult]";
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+            if (!(o instanceof Result))
+                return false;
+            Result result = (Result) o;
+            return Arrays.equals(baseStats, result.baseStats) && breed == result.breed;
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Arrays.hashCode(baseStats) + (breed != null ? breed.hashCode() : 0);
+        }
     }
 
     /**

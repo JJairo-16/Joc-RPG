@@ -7,6 +7,7 @@ import java.util.Scanner;
 import models.characters.Statistics;
 import models.weapons.Arsenal;
 import models.weapons.WeaponType;
+import utils.cache.TextWrapCache;
 import utils.ui.Ansi;
 import utils.ui.Cleaner;
 import utils.ui.Prettier;
@@ -23,6 +24,11 @@ public final class WeaponMenu {
 
     private static final Cleaner cls = new Cleaner();
     private static final Scanner scanner = new Scanner(System.in);
+    private static final TextWrapCache WRAP_CACHE = new TextWrapCache();
+
+    // Separador reutilitzable per evitar concatenacions repetides
+    private static final String CARD_SEPARATOR =
+            "   " + Ansi.DARK_GRAY + "────────────────────────────────────────────────────────" + Ansi.RESET + "\n";
 
     private WeaponMenu() {
     }
@@ -45,14 +51,21 @@ public final class WeaponMenu {
             return -1;
         }
 
+        // Caché local per construir la UI amb un sol print per repintat
+        final StringBuilder sb = new StringBuilder(32_768);
+
         while (true) {
             cls.clear();
-            Prettier.printTitle(title);
 
-            printWeapons(weapons);
-            System.out.println();
+            sb.setLength(0);
+            appendTitle(sb, title);
+            appendWeapons(sb, weapons);
+            sb.append('\n');
+            sb.append("Seleccioni una arma, si us plau: ");
 
-            System.out.print("Seleccioni una arma, si us plau: ");
+            // Un sol write a consola per la UI
+            System.out.print(sb.toString());
+
             int option = getInteger();
             if (option == -1) {
                 Menu.pause();
@@ -118,19 +131,29 @@ public final class WeaponMenu {
         boolean onlyEquippable = false;
         TypeFilter typeFilter = TypeFilter.ALL;
 
+        boolean dirty = true;
+        List<FilteredItem> filtered = List.of();
+
+        final StringBuilder sb = new StringBuilder(64_000);
+
         while (true) {
             cls.clear();
-            Prettier.printTitle(title);
 
-            printFilterBar(onlyEquippable, typeFilter);
-            System.out.println();
+            if (dirty) {
+                filtered = buildFilteredItems(weapons, stats, onlyEquippable, typeFilter);
+                dirty = false;
+            }
 
-            List<Integer> filteredIdx = buildFilteredIndexes(weapons, stats, onlyEquippable, typeFilter);
+            sb.setLength(0);
+            appendTitle(sb, title);
+            appendFilterBar(sb, onlyEquippable, typeFilter);
+            sb.append('\n');
+            appendWeaponsFiltered(sb, weapons, filtered, stats);
+            sb.append('\n');
+            sb.append("Opció (número), [F] equipables, [T] tipus: ");
 
-            printWeaponsFiltered(weapons, filteredIdx, stats);
-            System.out.println();
+            System.out.print(sb.toString());
 
-            System.out.print("Opció (número), [F] equipables, [T] tipus: ");
             String in = getInput();
             if (in == null) {
                 Menu.pause();
@@ -139,10 +162,12 @@ public final class WeaponMenu {
 
             if (in.equalsIgnoreCase("f")) {
                 onlyEquippable = !onlyEquippable;
+                dirty = true;
                 continue;
             }
             if (in.equalsIgnoreCase("t")) {
                 typeFilter = typeFilter.next();
+                dirty = true;
                 continue;
             }
 
@@ -159,13 +184,13 @@ public final class WeaponMenu {
             }
 
             int idxInFiltered = opt - 2;
-            if (idxInFiltered < 0 || idxInFiltered >= filteredIdx.size()) {
-                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", filteredIdx.size() + 1);
+            if (idxInFiltered < 0 || idxInFiltered >= filtered.size()) {
+                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", filtered.size() + 1);
                 Menu.pause();
                 continue;
             }
 
-            return filteredIdx.get(idxInFiltered);
+            return filtered.get(idxInFiltered).index;
         }
     }
 
@@ -175,6 +200,7 @@ public final class WeaponMenu {
      */
     public static Arsenal chooseWeaponEntryWithFilters(List<Arsenal> weapons, String title, Statistics stats) {
         int idx = chooseWeaponWithFilters(weapons, title, stats);
+        if (weapons == null) return null;
         return (idx < 0) ? null : weapons.get(idx);
     }
 
@@ -193,19 +219,29 @@ public final class WeaponMenu {
         boolean onlyEquippable = state.isOnlyEquippable();
         TypeFilter typeFilter = state.getTypeFilter();
 
+        boolean dirty = true;
+        List<FilteredItem> filtered = List.of();
+
+        final StringBuilder sb = new StringBuilder(64_000);
+
         while (true) {
             cls.clear();
-            Prettier.printTitle(title);
 
-            printFilterBar(onlyEquippable, typeFilter);
-            System.out.println();
+            if (dirty) {
+                filtered = buildFilteredItems(weapons, stats, onlyEquippable, typeFilter);
+                dirty = false;
+            }
 
-            List<Integer> filteredIdx = buildFilteredIndexes(weapons, stats, onlyEquippable, typeFilter);
+            sb.setLength(0);
+            appendTitle(sb, title);
+            appendFilterBar(sb, onlyEquippable, typeFilter);
+            sb.append('\n');
+            appendWeaponsFiltered(sb, weapons, filtered, stats);
+            sb.append('\n');
+            sb.append("Opció (número), [F] equipables, [T] tipus: ");
 
-            printWeaponsFiltered(weapons, filteredIdx, stats);
-            System.out.println();
+            System.out.print(sb.toString());
 
-            System.out.print("Opció (número), [F] equipables, [T] tipus: ");
             String in = getInput();
             if (in == null) {
                 Menu.pause();
@@ -215,11 +251,13 @@ public final class WeaponMenu {
             if (in.equalsIgnoreCase("f")) {
                 onlyEquippable = !onlyEquippable;
                 state.setOnlyEquippable(onlyEquippable);
+                dirty = true;
                 continue;
             }
             if (in.equalsIgnoreCase("t")) {
                 typeFilter = typeFilter.next();
                 state.setTypeFilter(typeFilter);
+                dirty = true;
                 continue;
             }
 
@@ -237,8 +275,8 @@ public final class WeaponMenu {
             }
 
             int idxInFiltered = opt - 2;
-            if (idxInFiltered < 0 || idxInFiltered >= filteredIdx.size()) {
-                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", filteredIdx.size() + 1);
+            if (idxInFiltered < 0 || idxInFiltered >= filtered.size()) {
+                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", filtered.size() + 1);
                 Menu.pause();
                 continue;
             }
@@ -246,7 +284,7 @@ public final class WeaponMenu {
             state.setOnlyEquippable(onlyEquippable);
             state.setTypeFilter(typeFilter);
 
-            return filteredIdx.get(idxInFiltered);
+            return filtered.get(idxInFiltered).index;
         }
     }
 
@@ -256,31 +294,50 @@ public final class WeaponMenu {
         return (idx < 0) ? null : weapons.get(idx);
     }
 
-    private static List<Integer> buildFilteredIndexes(
+    /**
+     * Element filtrat: guarda l'índex original i si és equipable (per evitar cridar
+     * canEquip(stats) més d'un cop per repintat).
+     */
+    private static final class FilteredItem {
+        final int index; // índex dins la llista original
+        final boolean equippable; // resultat de canEquip(stats) si stats != null
+
+        FilteredItem(int index, boolean equippable) {
+            this.index = index;
+            this.equippable = equippable;
+        }
+    }
+
+    /**
+     * Construeix la llista d'elements filtrats (índexos originals) i, si cal,
+     * calcula també l'etiqueta d'equipable una sola vegada.
+     */
+    private static List<FilteredItem> buildFilteredItems(
             List<Arsenal> weapons,
             Statistics stats,
             boolean onlyEquippable,
             TypeFilter typeFilter) {
 
-        List<Integer> out = new ArrayList<>();
+        List<FilteredItem> out = new ArrayList<>();
 
         for (int i = 0; i < weapons.size(); i++) {
             Arsenal w = weapons.get(i);
+            WeaponType wt = w.getType();
 
-            if (!typeFilter.matches(w.getType())) {
+            if (!typeFilter.matches(wt)) {
                 continue;
             }
 
-            if (onlyEquippable) {
-                if (stats == null) {
-                    continue;
-                }
-                if (!w.getType().canEquip(stats)) {
-                    continue;
-                }
+            boolean equippable = false;
+            if (stats != null && wt != null) {
+                equippable = wt.canEquip(stats);
             }
 
-            out.add(i);
+            if (onlyEquippable && !equippable) {
+                continue;
+            }
+
+            out.add(new FilteredItem(i, equippable));
         }
 
         return out;
@@ -337,84 +394,112 @@ public final class WeaponMenu {
         }
     }
 
-    private static void printFilterBar(boolean onlyEquippable, TypeFilter typeFilter) {
+    private static void appendTitle(StringBuilder sb, String title) {
+        // No podem garantir que Prettier tingui versió "toString", així que fem un títol senzill.
+        // Si vols exactament el mateix estil, pots afegir un Prettier.appendTitle(sb, title).
+        sb.append(Ansi.BOLD).append(title).append(Ansi.RESET).append("\n\n");
+    }
+
+    private static void appendFilterBar(StringBuilder sb, boolean onlyEquippable, TypeFilter typeFilter) {
         String eq = onlyEquippable ? (Ansi.GREEN + "ON" + Ansi.RESET) : (Ansi.DARK_GRAY + "OFF" + Ansi.RESET);
         String type = Ansi.BOLD + typeFilter.getLabel() + Ansi.RESET;
 
-        System.out.printf("%sFiltres:%s  [F] Equipables: %s   [T] Tipus: %s%n",
-                Ansi.DARK_GRAY, Ansi.RESET, eq, type);
+        sb.append(Ansi.DARK_GRAY)
+          .append("Filtres:")
+          .append(Ansi.RESET)
+          .append("  [F] Equipables: ")
+          .append(eq)
+          .append("   [T] Tipus: ")
+          .append(type)
+          .append('\n');
     }
 
-    private static void printWeapons(List<Arsenal> weapons) {
-        System.out.printf("%s%s1.%s %sCancelar%s%n",
-                Ansi.DARK_GRAY, Ansi.BOLD, Ansi.RESET,
-                Ansi.DARK_GRAY, Ansi.RESET);
+    private static void appendWeapons(StringBuilder sb, List<Arsenal> weapons) {
+        sb.append(Ansi.DARK_GRAY).append(Ansi.BOLD).append("1.").append(Ansi.RESET)
+          .append(' ')
+          .append(Ansi.DARK_GRAY).append("Cancelar").append(Ansi.RESET)
+          .append('\n');
 
         int num = 2;
-        for (Arsenal w : weapons) {
-            printWeaponCard(num++, w, null);
+        for (int i = 0; i < weapons.size(); i++) {
+            Arsenal w = weapons.get(i);
+            appendWeaponCard(sb, num++, w, null, false);
         }
     }
 
-    private static void printWeaponsFiltered(List<Arsenal> weapons, List<Integer> filteredIdx, Statistics stats) {
-        System.out.printf("%s%s1.%s %sCancelar%s%n",
-                Ansi.DARK_GRAY, Ansi.BOLD, Ansi.RESET,
-                Ansi.DARK_GRAY, Ansi.RESET);
+    private static void appendWeaponsFiltered(
+            StringBuilder sb,
+            List<Arsenal> weapons,
+            List<FilteredItem> filtered,
+            Statistics stats) {
 
-        if (filteredIdx.isEmpty()) {
-            System.out.println(Ansi.DARK_GRAY
-                    + "  (No hi ha armes amb aquests filtres. Prem 'f' o 't' per canviar.)"
-                    + Ansi.RESET);
+        sb.append(Ansi.DARK_GRAY).append(Ansi.BOLD).append("1.").append(Ansi.RESET)
+          .append(' ')
+          .append(Ansi.DARK_GRAY).append("Cancelar").append(Ansi.RESET)
+          .append('\n');
+
+        if (filtered.isEmpty()) {
+            sb.append(Ansi.DARK_GRAY)
+              .append("  (No hi ha armes amb aquests filtres. Prem 'f' o 't' per canviar.)")
+              .append(Ansi.RESET)
+              .append('\n');
             return;
         }
 
         int num = 2;
-        for (int originalIndex : filteredIdx) {
-            Arsenal w = weapons.get(originalIndex);
-            printWeaponCard(num++, w, stats);
+        for (FilteredItem it : filtered) {
+            Arsenal w = weapons.get(it.index);
+            appendWeaponCard(sb, num++, w, stats, it.equippable);
         }
     }
 
-    private static void printWeaponCard(int optionNumber, Arsenal w, Statistics stats) {
+    private static void appendWeaponCard(StringBuilder sb, int optionNumber, Arsenal w, Statistics stats, boolean equippable) {
         String num = Ansi.CYAN + Ansi.BOLD + optionNumber + "." + Ansi.RESET;
         String name = Ansi.WHITE + Ansi.BOLD + w.getName() + Ansi.RESET;
-        String type = colorByType(w.getType()) + "[" + w.getType().getName() + "]" + Ansi.RESET;
+
+        WeaponType wt = w.getType();
+        String typeName = (wt == null) ? "?" : wt.getName();
+        String type = colorByType(wt) + "[" + typeName + "]" + Ansi.RESET;
 
         String equipTag = "";
         if (stats != null) {
-            boolean can = w.getType().canEquip(stats);
-            equipTag = can
+            equipTag = equippable
                     ? (" " + Ansi.GREEN + Ansi.BOLD + "(EQUIPABLE)" + Ansi.RESET)
                     : (" " + Ansi.DARK_GRAY + "(NO EQUIPABLE)" + Ansi.RESET);
         }
 
-        System.out.printf("%s %s %s%s%n", num, name, type, equipTag);
+        sb.append(num).append(' ').append(name).append(' ').append(type).append(equipTag).append('\n');
 
-        String desc = w.getDescription() == null ? "" : w.getDescription().trim();
-        if (!desc.isEmpty()) {
-            for (String line : wrap(desc, 78)) {
-                System.out.println("   " + Ansi.DARK_GRAY + line + Ansi.RESET);
+        String desc = w.getDescription();
+        if (desc != null) {
+            desc = desc.trim();
+            if (!desc.isEmpty()) {
+                for (String line : WRAP_CACHE.get(desc, 78)) {
+                    sb.append("   ").append(Ansi.DARK_GRAY).append(line).append(Ansi.RESET).append('\n');
+                }
             }
         }
 
-        String dmg = Ansi.GREEN + "Dany: " + Ansi.RESET + Ansi.BOLD + w.getBaseDamage() + Ansi.RESET;
-        String crit = Ansi.YELLOW + "Crit: " + Ansi.RESET + Ansi.BOLD
-                + String.format("%.0f%%", w.getCriticalProb() * 100.0) + Ansi.RESET;
-        String mult = Ansi.YELLOW + "Mult: " + Ansi.RESET + Ansi.BOLD + String.format("x%.2f", w.getCriticalDamage())
-                + Ansi.RESET;
+        sb.append("   ")
+          .append(Ansi.GREEN).append("Dany: ").append(Ansi.RESET).append(Ansi.BOLD).append(w.getBaseDamage()).append(Ansi.RESET)
+          .append("   ")
+          .append(Ansi.YELLOW).append("Crit: ").append(Ansi.RESET).append(Ansi.BOLD)
+          .append(roundPer(w.getCriticalProb())).append("%").append(Ansi.RESET)
+          .append("   ")
+          .append(Ansi.YELLOW).append("Mult: ").append(Ansi.RESET).append(Ansi.BOLD).append("x")
+          .append(round2(w.getCriticalDamage())).append(Ansi.RESET)
+          .append("   ");
 
-        String mana;
         if (w.getManaPrice() > 0) {
-            mana = Ansi.BRIGHT_BLUE + "Mana: " + Ansi.RESET + Ansi.BOLD + String.format("%.0f", w.getManaPrice())
-                    + Ansi.RESET;
+            sb.append(Ansi.BRIGHT_BLUE).append("Mana: ").append(Ansi.RESET).append(Ansi.BOLD)
+              .append(Math.round(w.getManaPrice()))
+              .append(Ansi.RESET);
         } else {
-            mana = Ansi.DARK_GRAY + "Mana: -" + Ansi.RESET;
+            sb.append(Ansi.DARK_GRAY).append("Mana: -").append(Ansi.RESET);
         }
+        sb.append('\n');
 
-        System.out.printf("   %s   %s   %s   %s%n", dmg, crit, mult, mana);
-
-        System.out.println(
-                "   " + Ansi.DARK_GRAY + "────────────────────────────────────────────────────────" + Ansi.RESET);
+        sb.append(CARD_SEPARATOR);
     }
 
     private static Integer tryParseInt(String s) {
@@ -423,40 +508,6 @@ public final class WeaponMenu {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    /**
-     * Wrap simple per no trencar la UI en terminals estrets.
-     */
-    private static List<String> wrap(String text, int maxWidth) {
-        if (text.length() <= maxWidth) {
-            return List.of(text);
-        }
-
-        ArrayList<String> lines = new ArrayList<>();
-        String[] words = text.split("\\s+");
-        StringBuilder line = new StringBuilder();
-
-        for (String word : words) {
-            if (line.isEmpty()) {
-                line.append(word);
-                continue;
-            }
-
-            if (line.length() + 1 + word.length() <= maxWidth) {
-                line.append(' ').append(word);
-            } else {
-                lines.add(line.toString());
-                line.setLength(0);
-                line.append(word);
-            }
-        }
-
-        if (!line.isEmpty()) {
-            lines.add(line.toString());
-        }
-
-        return lines;
     }
 
     private enum TypeFilter {
@@ -529,5 +580,13 @@ public final class WeaponMenu {
         public void setTypeFilter(TypeFilter typeFilter) {
             this.typeFilter = (typeFilter == null) ? TypeFilter.ALL : typeFilter;
         }
+    }
+
+    private static double round2(double n) {
+        return Math.round(n * 100.0) / 100.0;
+    }
+
+    private static int roundPer(double n) {
+        return (int) Math.round(n * 100.0);
     }
 }

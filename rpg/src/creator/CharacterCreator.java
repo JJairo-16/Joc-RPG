@@ -75,7 +75,7 @@ public class CharacterCreator {
 
     private static final ScaledLimits limits = StatsBudget.scaleLimits(TOTAL_POINTS);
     private static final int MIN_STAT = limits.minValue();
-    private static final int MAX_STAT = limits.maxValue(); 
+    private static final int MAX_STAT = limits.maxValue();
 
     /**
      * Restricció mínima específica per a Constitució (vida).
@@ -249,43 +249,59 @@ public class CharacterCreator {
         int[] stats = gen.stats();
         Breed breed = gen.breed();
 
-        Prettier.printTitle("Personatge generat automàticament");
-        System.out.println();
+        StringBuilder sb = new StringBuilder(512);
 
-        // Header tipo "card"
-        System.out.println(" " + Ansi.WHITE + Ansi.BOLD + "Raça: " + Ansi.RESET
-                + Ansi.CYAN + Ansi.BOLD + breed.getName() + Ansi.RESET);
+        sb.append('\n');
+
+        sb.append(" ")
+                .append(Ansi.WHITE).append(Ansi.BOLD).append("Raça: ").append(Ansi.RESET)
+                .append(Ansi.CYAN).append(Ansi.BOLD).append(breed.getName()).append(Ansi.RESET)
+                .append('\n');
 
         String desc = (breed.getDescription() == null) ? "" : breed.getDescription().trim();
         if (!desc.isEmpty()) {
             for (String line : wrap(desc, 78)) {
-                System.out.println("   " + Ansi.DARK_GRAY + line + Ansi.RESET);
+                sb.append("   ")
+                        .append(Ansi.DARK_GRAY).append(line).append(Ansi.RESET)
+                        .append('\n');
             }
         }
 
         int bonusPct = (int) Math.round(breed.bonus() * 100.0);
-        System.out.println("   " + Ansi.GREEN + "Bonus: " + Ansi.RESET
-                + Ansi.BOLD + "+" + bonusPct + "%" + Ansi.RESET
-                + Ansi.DARK_GRAY + " a " + Ansi.RESET
-                + Ansi.BOLD + breed.bonusStat().getName() + Ansi.RESET);
 
-        System.out.println(
-                " " + Ansi.DARK_GRAY + "────────────────────────────────────────────────────────" + Ansi.RESET);
+        sb.append("   ")
+                .append(Ansi.GREEN).append("Bonus: ").append(Ansi.RESET)
+                .append(Ansi.BOLD).append("+").append(bonusPct).append("%").append(Ansi.RESET)
+                .append(Ansi.DARK_GRAY).append(" a ").append(Ansi.RESET)
+                .append(Ansi.BOLD).append(breed.bonusStat().getName()).append(Ansi.RESET)
+                .append('\n');
 
-        // Stats en “chips” (orden fijo del record: STR DEX CON INT WIS CHA LUCK)
-        System.out.printf("   %s   %s   %s   %s%n",
-                statChip("Força", stats[0]),
-                statChip("Destresa", stats[1]),
-                statChip("Constitució", stats[2]),
-                statChip("Intel·ligència", stats[3]));
+        sb.append(" ")
+                .append(Ansi.DARK_GRAY)
+                .append("────────────────────────────────────────────────────────")
+                .append(Ansi.RESET)
+                .append('\n');
 
-        System.out.printf("   %s   %s   %s%n",
-                statChip("Saviesa", stats[4]),
-                statChip("Carisma", stats[5]),
-                statChip("Sort", stats[6]));
+        sb.append("   ")
+                .append(statChip("Força", stats[0])).append("   ")
+                .append(statChip("Destresa", stats[1])).append("   ")
+                .append(statChip("Constitució", stats[2])).append("   ")
+                .append(statChip("Intel·ligència", stats[3]))
+                .append('\n');
 
-        System.out.println(
-                " " + Ansi.DARK_GRAY + "────────────────────────────────────────────────────────" + Ansi.RESET);
+        sb.append("   ")
+                .append(statChip("Saviesa", stats[4])).append("   ")
+                .append(statChip("Carisma", stats[5])).append("   ")
+                .append(statChip("Sort", stats[6]))
+                .append('\n');
+
+        sb.append(" ")
+                .append(Ansi.DARK_GRAY)
+                .append("────────────────────────────────────────────────────────")
+                .append(Ansi.RESET)
+                .append('\n');
+
+        System.out.print(sb.toString());
     }
 
     private static String statChip(String label, int value) {

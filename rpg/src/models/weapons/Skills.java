@@ -5,6 +5,7 @@ import static models.weapons.Target.*;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 
 import static utils.ui.Ansi.*;
 
@@ -19,7 +20,14 @@ public class Skills {
     private Skills() {
     }
 
+    private static final Scanner IN = new Scanner(System.in);
+    private static final Pattern ANSI_PATTERN = Pattern.compile("\u001B\\[[;\\d]*m");
+
     private static final GrimoriCodeGenerator grimoriCodeGenerator = new GrimoriCodeGenerator(5, 1, 4, 2);
+
+    private static final int GRIMORI_WIDTH = 50;
+    private static final String GRIMORI_LINE = "+" + "-".repeat(GRIMORI_WIDTH) + "+";
+    private static final String GRIMORI_SEP = "|" + "-".repeat(GRIMORI_WIDTH) + "|";
 
     /**
      * No aplica cap habilitat especial.
@@ -119,6 +127,11 @@ public class Skills {
      */
     public static AttackResult arcaneDisruption(Weapon weapon, Statistics stats, Random rng) {
         double baseManaCost = weapon.getManaPrice();
+
+        if (baseManaCost > 0 && !stats.consumeMana(baseManaCost)) {
+            return new AttackResult(0, "no té prou mana per llençar la disrupció arcana.");
+        }
+
         stats.consumeMana(baseManaCost);
 
         double luck = stats.getLuck();
@@ -221,24 +234,19 @@ public class Skills {
         }
 
         String expectedStr = grimoriCodeGenerator.generate();
-        StringBuilder expected = new StringBuilder(expectedStr);
 
         // ── UI: més neta i “centrada” (sense caràcters estranys)
-        printGrimorieGame(expected);
+        printGrimorieGame(expectedStr);
 
         long start = System.nanoTime();
-
-        // IMPORTANT: no tancar System.in
-        @SuppressWarnings("resource")
-        Scanner sc = new Scanner(System.in);
-        String typed = sc.nextLine();
-
+        String typed = IN.nextLine();
         long end = System.nanoTime();
+
         double seconds = (end - start) / 1_000_000_000.0;
 
         System.out.println();
 
-        boolean correct = typed != null && typed.trim().equals(expected.toString());
+        boolean correct = typed != null && typed.trim().equals(expectedStr);
 
         // ── Destreza: dona marge perquè el temps no decaigui tant
         int dex = stats.getDexterity();
@@ -246,8 +254,8 @@ public class Skills {
         double dexGrace = Math.clamp(dex * 0.02, 0.0, 0.6);
 
         // ── Decaig més ràpid que abans (base més exigent), però DEX ho compensa
-        final double fast = 1.85 + (dexGrace * 0.20); // ràpid
-        final double ok = 3.1 + (dexGrace * 0.70); // neutre
+        final double fast = 1.8 + (dexGrace * 0.20); // ràpid
+        final double ok = 3.0 + (dexGrace * 0.70); // neutre
         final double slow = 5.0 + dexGrace; // lent
 
         double multiplier;
@@ -296,43 +304,42 @@ public class Skills {
         return new AttackResult(finalDamage, msg);
     }
 
-    private static void printGrimorieGame(StringBuilder expected) {
+    private static void printGrimorieGame(String expected) {
+        final String title = BOLD + CYAN + "DESAFIAMENT DEL GRIMORI" + RESET;
+        final String instr = WHITE + "Escriu el codi (5 digits: 1-4)" + RESET;
+        final String hint = DIM + "Prem ENTER quan acabis" + RESET;
 
-        final int width = 50;
-
-        String line = "+" + "-".repeat(width) + "+";
-        String sep = "|" + "-".repeat(width) + "|";
-
-        String title = BOLD + CYAN + "DESAFIAMENT DEL GRIMORI" + RESET;
-        String instr = WHITE + "Escriu el codi (5 digits: 1-4)" + RESET;
-        String hint = DIM + "Prem ENTER quan acabis" + RESET;
-
-        String codeSpaced = expected.toString().replace("", " ").trim();
-        String codeLabel = BOLD + YELLOW + "[ " + codeSpaced + " ]" + RESET;
+        String codeSpaced = spaced(expected);
+        final String codeLabel = BOLD + YELLOW + "[ " + codeSpaced + " ]" + RESET;
 
         UnaryOperator<String> center = text -> {
             String visible = stripAnsi(text);
-            int pad = Math.max(0, (width - visible.length()) / 2);
-            int rem = Math.max(0, width - pad - visible.length());
+            int pad = Math.max(0, (GRIMORI_WIDTH - visible.length()) / 2);
+            int rem = Math.max(0, GRIMORI_WIDTH - pad - visible.length());
             return "|" + " ".repeat(pad) + text + " ".repeat(rem) + "|";
         };
 
-        System.out.println("\n" + DIM + "El grimori brilla amb energia arcana..." + RESET + "\n");
+        StringBuilder sb = new StringBuilder(1024);
 
-        System.out.println(line);
-        System.out.println(center.apply(title));
-        System.out.println(sep);
-        System.out.println(center.apply(instr));
-        System.out.println(center.apply(hint));
-        System.out.println(sep);
-        System.out.println(center.apply(codeLabel));
-        System.out.println(line);
+        sb.append('\n')
+                .append(DIM).append("El grimori brilla amb energia arcana...").append(RESET)
+                .append("\n\n");
 
-        System.out.print(BOLD + GREEN + "> " + RESET);
+        sb.append(GRIMORI_LINE).append('\n');
+        sb.append(center.apply(title)).append('\n');
+        sb.append(GRIMORI_SEP).append('\n');
+        sb.append(center.apply(instr)).append('\n');
+        sb.append(center.apply(hint)).append('\n');
+        sb.append(GRIMORI_SEP).append('\n');
+        sb.append(center.apply(codeLabel)).append('\n');
+        sb.append(GRIMORI_LINE).append('\n');
+        sb.append(BOLD).append(GREEN).append("> ").append(RESET);
+
+        System.out.print(sb.toString());
     }
 
     private static String stripAnsi(String s) {
-        return s.replaceAll("\u001B\\[[;\\d]*m", "");
+        return ANSI_PATTERN.matcher(s).replaceAll("");
     }
 
     /**
@@ -397,15 +404,11 @@ public class Skills {
 
                     swapped = true;
                 }
-
-                if (!swapped)
-                    break;
             }
-        }
 
-        // damages[0] = ++
-        // damages[1] = ==
-        // damages[2] = --
+            if (!swapped)
+                break;
+        }
 
         int intelligence = stats.getIntelligence();
         int luck = stats.getLuck();
@@ -421,11 +424,11 @@ public class Skills {
         int chosenIndex;
 
         if (roll < bestChance) {
-            chosenIndex = 2; // ++
+            chosenIndex = 0; // ++
         } else if (roll < bestChance + (1.0 - bestChance - worstChance)) {
             chosenIndex = 1; // ===
         } else {
-            chosenIndex = 0; // --
+            chosenIndex = 2; // --
         }
 
         double finalDamage = damages[chosenIndex];
@@ -448,5 +451,16 @@ public class Skills {
 
     private static double round2(double n) {
         return Math.round(n * 100.0) / 100.0;
+    }
+
+    private static String spaced(String s) {
+        int n = s.length();
+        if (n == 0)
+            return s;
+        StringBuilder b = new StringBuilder(n * 2 - 1);
+        b.append(s.charAt(0));
+        for (int i = 1; i < n; i++)
+            b.append(' ').append(s.charAt(i));
+        return b.toString();
     }
 }
