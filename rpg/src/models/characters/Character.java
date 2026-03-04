@@ -1,10 +1,19 @@
 package models.characters;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Random;
+import java.util.Iterator;
 
+import models.effects.Effect;
 import models.weapons.AttackResult;
 import models.weapons.Weapon;
 import models.weapons.WeaponType;
+
+import models.effects.EffectResult;
+import models.effects.StackingRule;
+import models.weapons.passives.HitContext;
 
 /**
  * Representa un personatge del joc amb estadístiques, raça i arma equipable.
@@ -24,6 +33,7 @@ public class Character {
     private Weapon weapon;
 
     private final Random rng = new Random();
+    private final List<Effect> effects = new ArrayList<>();
 
     /**
      * Crea un personatge i valida:
@@ -213,5 +223,102 @@ public class Character {
 
     public Random rng() {
         return rng;
+    }
+
+    /**
+     * Aplica un efecte al personatge segons la seva {@link StackingRule}.
+     *
+     * <p>
+     * Si ja existeix un efecte amb la mateixa {@link Effect#key()}, aplica la
+     * regla:
+     * </p>
+     * <ul>
+     * <li>IGNORE: no fa res</li>
+     * <li>REPLACE: substitueix l'antic</li>
+     * <li>REFRESH / STACK: crida {@link Effect#mergeFrom(Effect)} sobre
+     * l'existent</li>
+     * </ul>
+     */
+    public void addEffect(Effect incoming) {
+        if (incoming == null)
+            return;
+
+        for (int i = 0; i < effects.size(); i++) {
+            Effect existing = effects.get(i);
+
+            if (!existing.key().equals(incoming.key()))
+                continue;
+
+            StackingRule rule = existing.stackingRule();
+
+            switch (rule) {
+                case IGNORE:
+                    return;
+
+                case REPLACE:
+                    effects.set(i, incoming);
+                    return;
+
+                case REFRESH, STACK:
+                    existing.mergeFrom(incoming);
+                    return;
+            }
+        }
+
+        // No existia: afegim
+        effects.add(incoming);
+
+        // Ordre consistent per prioritat
+        effects.sort(Comparator.comparingInt(Effect::priority).reversed());
+    }
+
+    /**
+     * Executa els efectes del personatge en una fase del combat.
+     *
+     * <p>
+     * Retorna missatges per log i elimina els efectes expirats.
+     * </p>
+     */
+    public List<String> triggerEffects(HitContext ctx, HitContext.Phase phase, java.util.Random rng) {
+        if (effects.isEmpty())
+            return List.of();
+
+        List<String> messages = new ArrayList<>();
+
+        for (Effect e : effects) {
+            if (!e.isActive())
+                continue;
+
+            EffectResult r = e.onPhase(ctx, phase, rng);
+            if (r != null && r.message() != null && !r.message().isBlank()) {
+                messages.add(r.message());
+            }
+        }
+
+        // Neteja d'expirats (després d'executar)
+        cleanupExpiredEffects();
+
+        return messages;
+    }
+
+    /**
+     * Elimina efectes expirats.
+     */
+    private void cleanupExpiredEffects() {
+        if (effects.isEmpty())
+            return;
+
+        for (Iterator<Effect> it = effects.iterator(); it.hasNext();) {
+            Effect e = it.next();
+            if (e.isExpired())
+                it.remove();
+        }
+    }
+
+    /**
+     * (Opcional) Exposa una vista dels efectes, per UI/debug.
+     */
+    public List<Effect> getEffects() {
+        return List.copyOf(effects);
     }
 }

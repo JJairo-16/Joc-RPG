@@ -1,7 +1,7 @@
 package combat;
 
-import java.util.Random;
 import java.util.List;
+import java.util.Random;
 
 import static combat.Action.*;
 
@@ -9,6 +9,7 @@ import models.characters.Character;
 import models.characters.Result;
 import models.characters.Statistics;
 
+import models.weapons.Arsenal;
 import models.weapons.AttackResult;
 import models.weapons.Target;
 import models.weapons.Weapon;
@@ -52,6 +53,13 @@ public class CombatSystem {
     private final Random combatRng = new Random();
     private final TurnPriorityPolicy priorityPolicy;
 
+    // ── UI constants ───────────────────────────────────────────────────────────
+    private static final int BAR_SIZE = 20;
+    private static final int DIV_WIDTH = 44;
+
+    private static final String DIV = Ansi.DARK_GRAY + "─".repeat(DIV_WIDTH) + Ansi.RESET;
+    private static final String BIG_DIV = Ansi.DARK_GRAY + "═".repeat(DIV_WIDTH) + Ansi.RESET;
+
     /** Crea un combat 1vs1. */
     public CombatSystem(Character p1, Character p2) {
         this(p1, p2, new DefaultTurnPriorityPolicy());
@@ -89,10 +97,10 @@ public class CombatSystem {
         double p2HealthBefore = p2Stats.getHealth();
 
         // ── Executem torns segons política de prioritat ───────────────────────────
-        // Nota: requireix aquests camps al CombatSystem:
-        // private final TurnPriorityPolicy priorityPolicy;
-        // private final java.util.Random combatRng = new java.util.Random();
         boolean p1First = priorityPolicy.player1First(player1, a1, player2, a2, combatRng);
+
+        // Header suau del round (no interfereix amb el grimori perquè encara no hi ha prompt)
+        printRoundHeader();
 
         if (p1First) {
             playPlayerTurn(player1, player2, a1, a2);
@@ -109,7 +117,7 @@ public class CombatSystem {
         double p1DamageTaken = p1HealthBefore - p1HealthAfterAttacks;
         double p2DamageTaken = p2HealthBefore - p2HealthAfterAttacks;
 
-        // Separació visual + resum del round (SENSE regeneració encara)
+        // Resum del round (SENSE regeneració encara)
         System.out.println();
         printRoundSummary(player1, p1DamageTaken);
         printRoundSummary(player2, p2DamageTaken);
@@ -126,19 +134,18 @@ public class CombatSystem {
             return Winner.TIE;
         }
 
-        // Guardem estat abans de regenerar per calcular quant s'ha curat / recuperat
-        // mana
+        // Guardem estat abans de regenerar per calcular quant s'ha curat / recuperat mana
         double p1HealthPreRegen = p1Stats.getHealth();
         double p1ManaPreRegen = p1Stats.getMana();
 
         double p2HealthPreRegen = p2Stats.getHealth();
         double p2ManaPreRegen = p2Stats.getMana();
 
-        // Regenerem (això hauria d'afectar vida i mana)
+        // Regenerem
         player1.regen();
         player2.regen();
 
-        // Calculem increments reals (clamp inclòs)
+        // Calculem increments reals
         double p1HealthRegen = p1Stats.getHealth() - p1HealthPreRegen;
         double p1ManaRegen = p1Stats.getMana() - p1ManaPreRegen;
 
@@ -146,11 +153,29 @@ public class CombatSystem {
         double p2ManaRegen = p2Stats.getMana() - p2ManaPreRegen;
 
         System.out.println();
-        System.out.println("=== Regeneració ===");
+        printRegenHeader();
         printRegenSummary(player1, p1HealthRegen, p1ManaRegen);
         printRegenSummary(player2, p2HealthRegen, p2ManaRegen);
 
         return Winner.NONE;
+    }
+
+    // ───────────────────────────────────────────────────────────────────────────
+    // UI helpers
+    // ───────────────────────────────────────────────────────────────────────────
+
+    private static void printRoundHeader() {
+        System.out.println();
+        System.out.println(BIG_DIV);
+        System.out.println(Ansi.BOLD + "          COMBAT ROUND" + Ansi.RESET);
+        System.out.println(BIG_DIV);
+        System.out.println();
+    }
+
+    private static void printRegenHeader() {
+        System.out.println(BIG_DIV);
+        System.out.println(Ansi.CYAN + Ansi.BOLD + "           REGENERACIÓ" + Ansi.RESET);
+        System.out.println(BIG_DIV);
     }
 
     /**
@@ -168,35 +193,45 @@ public class CombatSystem {
         double currentMana = stats.getMana();
         double maxMana = stats.getMaxMana();
 
-        int barSize = 20;
+        System.out.println("   " + Ansi.DARK_GRAY + "─────────────" + Ansi.RESET);
 
-        System.out.println("   ─────────────");
+        String hpColor = healthColor(currentHealth, maxHealth);
 
         System.out.printf("Vida: %s %.2f / %.2f%n",
-                buildBar(currentHealth, maxHealth, barSize, Ansi.BRIGHT_RED),
+                buildBar(currentHealth, maxHealth, BAR_SIZE, hpColor),
                 currentHealth,
                 maxHealth);
 
         System.out.printf("Mana: %s %.2f / %.2f%n",
-                buildBar(currentMana, maxMana, barSize, Ansi.BRIGHT_BLUE),
+                buildBar(currentMana, maxMana, BAR_SIZE, Ansi.BRIGHT_BLUE),
                 currentMana,
                 maxMana);
     }
 
+    private static String healthColor(double current, double max) {
+        if (max <= 0)
+            return Ansi.BRIGHT_RED;
+
+        double r = Math.clamp(current / max, 0, 1);
+
+        if (r > 0.60)
+            return Ansi.GREEN;
+        if (r > 0.30)
+            return Ansi.YELLOW;
+        return Ansi.BRIGHT_RED;
+    }
+
+    // ───────────────────────────────────────────────────────────────────────────
+    // Combat logic
+    // ───────────────────────────────────────────────────────────────────────────
+
     /**
-     * Resolveix l'efecte d'un atac sobre un objectiu segons la seva acció
-     * defensiva.
+     * Resolveix l'efecte d'un atac sobre un objectiu segons la seva acció defensiva.
      *
      * <p>
-     * Amb {@code DODGE}/{@code DEFEND} s'invoca sempre el mètode, encara que el
-     * dany sigui 0,
+     * Amb {@code DODGE}/{@code DEFEND} s'invoca sempre el mètode, encara que el dany sigui 0,
      * per mantenir els missatges especials.
      * </p>
-     *
-     * @param damage       dany entrant
-     * @param target       objectiu que rep (o intenta evitar) el dany
-     * @param targetAction acció del target davant l'atac
-     * @return resultat (inclou missatge i dany rebut)
      */
     private Result resolveAttack(double damage, Character target, Action targetAction) {
         return switch (targetAction) {
@@ -217,16 +252,13 @@ public class CombatSystem {
      * Casos especials:
      * </p>
      * <ul>
-     * <li>Si l'atacant no ataca, el defensor pot igualment "executar" la seva
-     * defensa amb dany 0.</li>
-     * <li>Si l'atac apunta a {@code SELF}, s'aplica dany a l'atacant sense mostrar
-     * el dany rebut.</li>
+     * <li>Si l'atacant no ataca, el defensor pot igualment "executar" la seva defensa amb dany 0.</li>
+     * <li>Si l'atac apunta a {@code SELF}, s'aplica dany a l'atacant sense mostrar el dany rebut.</li>
      * </ul>
      */
     private void playPlayerTurn(Character attacker, Character defender, Action attackerAction, Action defenderAction) {
 
-        // Si l'atacant NO ataca, el defensor igualment pot "executar" la seva acció
-        // defensiva.
+        // Si l'atacant NO ataca, el defensor igualment pot "executar" la seva acció defensiva.
         if (attackerAction != ATTACK) {
             Result defenderResult = resolveAttack(0, defender, defenderAction);
 
@@ -236,7 +268,15 @@ public class CombatSystem {
             return;
         }
 
-        // Atac normal
+        // Si és Grimori: donem espai abans del mini-joc perquè no es barregi amb logs.
+        Weapon preWeapon = attacker.getWeapon();
+        if (isGrimori(preWeapon)) {
+            System.out.println();
+            System.out.println(Ansi.DARK_GRAY + "… el Grimori s'activa …" + Ansi.RESET);
+            System.out.println();
+        }
+
+        // Atac normal (pot disparar el mini-joc del grimori a dins)
         AttackResult attackResult = attacker.attack();
         String attackerMsg = attackResult.message();
 
@@ -251,16 +291,23 @@ public class CombatSystem {
             if (dmg > 0) {
                 attacker.getDamage(dmg);
             }
-            System.out.printf("%s %s%n", attacker.getName(), attackerMsg);
+
+            // Log més net (no fem "->" perquè no hi ha defensor)
+            System.out.printf("%s%s%s %s%n",
+                    Ansi.BOLD, attacker.getName(), Ansi.RESET,
+                    attackerMsg);
             return;
         }
 
         // ── Pipeline amb context mutable ───────────────────────────
-        HitContext ctx = new HitContext(attacker, defender, w, attacker.rng(), attackerAction, defenderAction);
+        Random attackerRng = attacker.rng();
+        boolean hasWeapon = (w != null);
+
+        HitContext ctx = new HitContext(attacker, defender, w, attackerRng, attackerAction, defenderAction);
         ctx.setAttackResult(attackResult);
 
         // Metadades útils (context extra per a passives)
-        if (w != null) {
+        if (hasWeapon) {
             ctx.putMeta("CRIT", w.lastWasCritic());
             ctx.putMeta("WEAPON_NAME", w.getName());
         } else {
@@ -269,17 +316,16 @@ public class CombatSystem {
         }
         ctx.putMeta("RAW_DAMAGE", ctx.baseDamage());
 
-        // BEFORE_ATTACK: ideal per marcar tags, checks, etc.
-        if (w != null)
-            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.BEFORE_ATTACK));
+        if (hasWeapon) {
+            // BEFORE_ATTACK: ideal per marcar tags, checks, etc.
+            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.BEFORE_ATTACK));
 
-        // MODIFY_DAMAGE: aquí es modifica el dany que entrarà a la defensa
-        if (w != null)
-            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.MODIFY_DAMAGE));
-
-        // BEFORE_DEFENSE: informació sobre la defensa imminent
-        if (w != null)
-            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.BEFORE_DEFENSE));
+            // MODIFY_DAMAGE: aquí es modifica el dany que entrarà a la defensa
+            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.MODIFY_DAMAGE));
+            
+            // BEFORE_DEFENSE: informació sobre la defensa imminent
+            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.BEFORE_DEFENSE));
+        }
 
         double damageToResolve = ctx.damageToResolve();
 
@@ -289,24 +335,36 @@ public class CombatSystem {
         ctx.setDamageDealt(defenderResult.recivied());
 
         // AFTER_DEFENSE: ja tenim el resultat de defensa (missatge + dany rebut)
-        if (w != null)
-            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.AFTER_DEFENSE));
+        if (hasWeapon)
+            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.AFTER_DEFENSE));
 
         // AFTER_HIT: només si hi ha dany real
-        if (w != null && ctx.damageDealt() > 0) {
-            printMsgs(w.triggerPhase(ctx, attacker.rng(), Phase.AFTER_HIT));
+        if (hasWeapon && ctx.damageDealt() > 0) {
+            printMsgs(w.triggerPhase(ctx, attackerRng, Phase.AFTER_HIT));
         }
 
-        // Si no hi ha dany i tampoc hi ha missatge útil (cas damage<=0 i acció
-        // "default"),
-        // només mostrem l'atacant.
+        // Si no hi ha dany i tampoc hi ha missatge útil, només mostrem l'atacant.
         if (defenderResult.recivied() == -1) {
-            System.out.printf("%s %s%n", attacker.getName(), attackerMsg);
+            System.out.printf("%s%s%s %s%n",
+                    Ansi.BOLD, attacker.getName(), Ansi.RESET,
+                    attackerMsg);
             return;
         }
 
-        // Hi ha resultat (amb missatge). El missatge del defensor ja inclou el seu nom.
-        System.out.printf("%s %s -> %s%n", attacker.getName(), attackerMsg, defenderResult.message());
+        // Log final (més llegible)
+        System.out.printf("%s%s%s %s %s->%s %s%n",
+                Ansi.BOLD, attacker.getName(), Ansi.RESET,
+                attackerMsg,
+                Ansi.DARK_GRAY, Ansi.RESET,
+                defenderResult.message());
+    }
+
+    private static boolean isGrimori(Weapon w) {
+        try {
+            return w != null && w.getId() == Arsenal.GRIMORIE;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -330,7 +388,12 @@ public class CombatSystem {
      * dany rebut i barres de vida/mana amb els valors actuals.
      */
     private void printRoundSummary(Character character, double damageTaken) {
-        System.out.printf("%s ha rebut %.2f de dany.%n", character.getName(), damageTaken);
+        System.out.println(DIV);
+
+        System.out.printf("%s%s%s ha rebut %s%.2f%s de dany.%n",
+                Ansi.BOLD, character.getName(), Ansi.RESET,
+                Ansi.BRIGHT_RED, damageTaken, Ansi.RESET);
+
         printStatusBars(character);
         System.out.println();
     }
@@ -340,10 +403,10 @@ public class CombatSystem {
      * quant s'ha recuperat i l'estat resultant (barres + valors).
      */
     private void printRegenSummary(Character character, double hpRegen, double manaRegen) {
-        System.out.printf("%s regenera: +%.2f vida, +%.2f mana.%n",
-                character.getName(),
-                Math.max(0, hpRegen),
-                Math.max(0, manaRegen));
+        System.out.printf("%s%s%s recupera %s+%.2f%s vida i %s+%.2f%s mana.%n",
+                Ansi.BOLD, character.getName(), Ansi.RESET,
+                Ansi.GREEN, Math.max(0, hpRegen), Ansi.RESET,
+                Ansi.BRIGHT_BLUE, Math.max(0, manaRegen), Ansi.RESET);
 
         printStatusBars(character);
         System.out.println();
@@ -355,6 +418,7 @@ public class CombatSystem {
     private static void printMsgs(List<String> msgs) {
         if (msgs == null || msgs.isEmpty())
             return;
+
         for (String msg : msgs) {
             if (msg != null && !msg.isBlank()) {
                 System.out.println("  + " + msg);
@@ -365,10 +429,6 @@ public class CombatSystem {
     /**
      * Construeix una barra proporcional (█/░) per un valor actual i un màxim.
      *
-     * @param current valor actual
-     * @param max     valor màxim
-     * @param size    longitud de la barra
-     * @param color   codi ANSI per pintar la barra
      * @return barra amb color + reset; o "[ERROR]" si els valors no són vàlids
      */
     private static String buildBar(double current, double max, int size, String color) {

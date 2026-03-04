@@ -199,7 +199,7 @@ public class Skills {
             damageMultiplier = Math.max(0.40, damageMultiplier);
         }
 
-        totalDamage = Math.round(totalDamage * 100.0) / 100.0;
+        totalDamage = round2(totalDamage);
 
         String message = switch (shots) {
             case 1 -> "La ballista dispara un únic projectil.";
@@ -229,6 +229,7 @@ public class Skills {
         long start = System.nanoTime();
 
         // IMPORTANT: no tancar System.in
+        @SuppressWarnings("resource")
         Scanner sc = new Scanner(System.in);
         String typed = sc.nextLine();
 
@@ -291,7 +292,7 @@ public class Skills {
             msg += " (crític)";
         }
 
-        finalDamage = Math.round(finalDamage * 100.0) / 100.0;
+        finalDamage = round2(finalDamage);
         return new AttackResult(finalDamage, msg);
     }
 
@@ -360,7 +361,7 @@ public class Skills {
         }
 
         double finalDamage = baseDamage * penetrationMultiplier;
-        finalDamage = Math.round(finalDamage * 100.0) / 100.0;
+        finalDamage = round2(finalDamage);
 
         String message = crit
                 ? "llença la daga amb una penetració devastadora! (crític)"
@@ -430,7 +431,7 @@ public class Skills {
         double finalDamage = damages[chosenIndex];
         boolean finalCrit = crits[chosenIndex];
 
-        finalDamage = Math.round(finalDamage * 100.0) / 100.0;
+        finalDamage = round2(finalDamage);
 
         String message = switch (chosenIndex) {
             case 2 -> "entreveu múltiples futurs i tria el més favorable.";
@@ -443,5 +444,9 @@ public class Skills {
         }
 
         return new AttackResult(finalDamage, message);
+    }
+
+    private static double round2(double n) {
+        return Math.round(n * 100.0) / 100.0;
     }
 }

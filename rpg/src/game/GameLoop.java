@@ -12,6 +12,7 @@ import models.weapons.Arsenal;
 import models.weapons.Weapon;
 import utils.input.Menu;
 import utils.input.WeaponMenu;
+import utils.ui.Ansi;
 import utils.ui.Cleaner;
 import utils.ui.Prettier;
 
@@ -25,8 +26,7 @@ public class GameLoop {
             "Atacar",
             "Defensar-se",
             "Esquivar",
-            "Veure informació"
-    );
+            "Veure informació");
 
     private final Character player1;
     private final Character player2;
@@ -41,7 +41,8 @@ public class GameLoop {
     }
 
     /**
-     * Inicia el combat i el manté en execució fins que hi hagi un vencedor (o empat).
+     * Inicia el combat i el manté en execució fins que hi hagi un vencedor (o
+     * empat).
      */
     public void init() {
         cls.clear();
@@ -72,19 +73,19 @@ public class GameLoop {
 
         switch (winner) {
             case PLAYER1:
-                System.out.println("🏆 VICTÒRIA!");
+                System.out.println("VICTÒRIA!");
                 System.out.printf("%s ha guanyat el combat!%n", player1.getName());
                 System.out.printf("%s ha caigut derrotat.%n", player2.getName());
                 break;
 
             case PLAYER2:
-                System.out.println("🏆 VICTÒRIA!");
+                System.out.println("VICTÒRIA!");
                 System.out.printf("%s ha guanyat el combat!%n", player2.getName());
                 System.out.printf("%s ha caigut derrotat.%n", player1.getName());
                 break;
 
             case TIE:
-                System.out.println("⚔ EMPAT!");
+                System.out.println("EMPAT!");
                 System.out.println("Tots dos combatents han caigut al mateix temps.");
                 System.out.println("No hi ha vencedor en aquesta batalla.");
                 break;
@@ -141,7 +142,8 @@ public class GameLoop {
     }
 
     /**
-     * Permet al jugador equipar una arma de l'arsenal (amb filtres) si compleix requisits.
+     * Permet al jugador equipar una arma de l'arsenal (amb filtres) si compleix
+     * requisits.
      */
     private void changeWeapon(Character player) {
         Weapon weapon = null;
@@ -162,8 +164,7 @@ public class GameLoop {
                     entries,
                     "Armes de l'arsenal",
                     stats,
-                    filters
-            );
+                    filters);
 
             if (selected == null) {
                 loop = false; // Cancel·lar
@@ -192,63 +193,166 @@ public class GameLoop {
     }
 
     /**
-     * Mostra la informació del jugador: dades bàsiques, raça, estadístiques i arma equipada.
+     * Mostra la informació del jugador: dades bàsiques, raça, estadístiques i arma
+     * equipada.
      */
     private void showPlayerInfo(Character player) {
         Statistics stats = player.geStatistics();
         Breed breed = player.getBreed();
         Weapon weapon = player.getWeapon();
 
-        StringBuilder sb = new StringBuilder();
-
         Prettier.printTitle("Informació del jugador");
-        sb.append("\n");
+        System.out.println();
 
-        // Nom i edat
-        sb.append("Nom: ").append(player.getName()).append("\n");
-        sb.append("Edat: ").append(player.getAge()).append("\n\n");
-
-        // Raça + descripció + bonus
-        int bonus = (int) Math.round(breed.bonus() * 100.0);
-        sb.append("Raça: ").append(breed.getName()).append("\n");
-        sb.append("Descripció: ").append(breed.getDescription()).append("\n");
-        sb.append("Bonus racial: +").append(bonus).append("% a ")
-                .append(breed.bonusStat().getName())
-                .append("\n\n");
-
-        // Estadístiques
-        sb.append("Estadístiques:\n");
-        sb.append("  Força: ").append(stats.getStrength()).append("\n");
-        sb.append("  Destresa: ").append(stats.getDexterity()).append("\n");
-        sb.append("  Constitució: ").append(stats.getConstitution()).append("\n");
-        sb.append("  Intel·ligència: ").append(stats.getIntelligence()).append("\n");
-        sb.append("  Saviesa: ").append(stats.getWisdom()).append("\n");
-        sb.append("  Carisma: ").append(stats.getCharisma()).append("\n");
-        sb.append("  Sort: ").append(stats.getLuck()).append("\n\n");
-
-        System.out.print(sb);
+        printPlayerCard(player, breed, stats, weapon);
 
         // Barres visuals (mantinc la teva API)
         CombatSystem.printStatusBars(player);
         System.out.println();
 
-        // Arma equipada
         if (weapon != null) {
-            StringBuilder weaponInfo = new StringBuilder();
-
-            weaponInfo.append("Arma equipada: ").append(weapon.getName()).append("\n");
-            weaponInfo.append("Descripció: ").append(weapon.getDescription()).append("\n\n");
-
-            weaponInfo.append("Estadístiques de l'arma:\n");
-            weaponInfo.append("  Tipus: ").append(weapon.getType()).append("\n");
-            weaponInfo.append("  Dany base: ").append(weapon.getBaseDamage()).append("\n");
-            weaponInfo.append(String.format("  Probabilitat de crític: %.2f%%%n", weapon.getCriticalProb() * 100));
-            weaponInfo.append(String.format("  Multiplicador crític: x%.2f%n", weapon.getCriticalDamage()));
-            weaponInfo.append(String.format("  Cost de mana: %.2f%n", weapon.getManaPrice()));
-
-            System.out.println(weaponInfo);
+            printWeaponEquippedCard(weapon, stats);
         } else {
-            System.out.println("Arma equipada: Cap\n");
+            System.out.println(
+                    " " + utils.ui.Ansi.DARK_GRAY + "Arma equipada:" + utils.ui.Ansi.RESET + " "
+                            + utils.ui.Ansi.BOLD + "Cap" + utils.ui.Ansi.RESET);
+            System.out.println(" " + utils.ui.Ansi.DARK_GRAY
+                    + "────────────────────────────────────────────────────────" + utils.ui.Ansi.RESET);
         }
+    }
+
+    private void printPlayerCard(Character p, Breed breed, Statistics s, Weapon weapon) {
+        String name = Ansi.WHITE + Ansi.BOLD + p.getName() + Ansi.RESET;
+        String age = Ansi.DARK_GRAY + "Edat: " + Ansi.RESET + Ansi.BOLD + p.getAge() + Ansi.RESET;
+
+        String breedName = Ansi.CYAN + Ansi.BOLD + breed.getName() + Ansi.RESET;
+        int bonusPct = (int) Math.round(breed.bonus() * 100.0);
+        String bonus = Ansi.GREEN + "Bonus: " + Ansi.RESET
+                + Ansi.BOLD + "+" + bonusPct + "%" + Ansi.RESET
+                + Ansi.DARK_GRAY + " a " + Ansi.RESET
+                + Ansi.BOLD + breed.bonusStat().getName() + Ansi.RESET;
+
+        String weaponTag = (weapon == null)
+                ? (Ansi.DARK_GRAY + "(SENSE ARMA)" + Ansi.RESET)
+                : (Ansi.GREEN + Ansi.BOLD + "(ARMA EQUIPADA)" + Ansi.RESET);
+
+        // Capçalera
+        System.out.printf(" %s  %s  %s%n", name, Ansi.DARK_GRAY + "·" + Ansi.RESET, age);
+        System.out.printf(" %s %s%n", breedName, weaponTag);
+
+        // Descripció raça (wrap com al WeaponMenu)
+        String desc = breed.getDescription() == null ? "" : breed.getDescription().trim();
+        if (!desc.isEmpty()) {
+            for (String line : wrap(desc, 78)) {
+                System.out.println("   " + Ansi.DARK_GRAY + line + Ansi.RESET);
+            }
+        }
+
+        System.out.println("   " + bonus);
+
+        // Stats en format compacte (2 línies tipus “barra d’stats”)
+        System.out.println();
+        System.out.printf("   %s   %s   %s   %s%n",
+                statChip("Força", s.getStrength()),
+                statChip("Destresa", s.getDexterity()),
+                statChip("Constitució", s.getConstitution()),
+                statChip("Intel·ligència", s.getIntelligence()));
+
+        System.out.printf("   %s   %s   %s%n",
+                statChip("Saviesa", s.getWisdom()),
+                statChip("Carisma", s.getCharisma()),
+                statChip("Sort", s.getLuck()));
+
+        System.out.println("   " + Ansi.DARK_GRAY
+                + "────────────────────────────────────────────────────────" + Ansi.RESET);
+    }
+
+    private void printWeaponEquippedCard(Weapon w, Statistics stats) {
+        String name = Ansi.WHITE + Ansi.BOLD + w.getName() + Ansi.RESET;
+        String type = colorByWeaponType(w.getType()) + "[" + w.getType().getName() + "]" + Ansi.RESET;
+
+        // “Equipable” aquí normalment sempre serà true perquè ja la tens equipada,
+        // però ho deixo coherent amb el WeaponMenu.
+        String equipTag = (stats != null && w.canEquip(stats))
+                ? (" " + Ansi.GREEN + Ansi.BOLD + "(EQUIPABLE)" + Ansi.RESET)
+                : (" " + Ansi.DARK_GRAY + "(NO EQUIPABLE)" + Ansi.RESET);
+
+        System.out.printf(" %s %s%s%n", name, type, equipTag);
+
+        String desc = w.getDescription() == null ? "" : w.getDescription().trim();
+        if (!desc.isEmpty()) {
+            for (String line : wrap(desc, 78)) {
+                System.out.println("   " + Ansi.DARK_GRAY + line + Ansi.RESET);
+            }
+        }
+
+        String dmg = Ansi.GREEN + "Dany: " + Ansi.RESET + Ansi.BOLD + w.getBaseDamage() + Ansi.RESET;
+        String crit = Ansi.YELLOW + "Crit: " + Ansi.RESET + Ansi.BOLD
+                + String.format("%.0f%%", w.getCriticalProb() * 100.0) + Ansi.RESET;
+        String mult = Ansi.YELLOW + "Mult: " + Ansi.RESET + Ansi.BOLD
+                + String.format("x%.2f", w.getCriticalDamage()) + Ansi.RESET;
+
+        String mana = (w.getManaPrice() > 0)
+                ? (Ansi.BRIGHT_BLUE + "Mana: " + Ansi.RESET + Ansi.BOLD + String.format("%.0f", w.getManaPrice())
+                        + Ansi.RESET)
+                : (Ansi.DARK_GRAY + "Mana: -" + Ansi.RESET);
+
+        System.out.printf("   %s   %s   %s   %s%n", dmg, crit, mult, mana);
+
+        System.out.println("   " + Ansi.DARK_GRAY
+                + "────────────────────────────────────────────────────────" + Ansi.RESET);
+    }
+
+    private String statChip(String label, int value) {
+        // “chip” curt i consistent
+        return Ansi.DARK_GRAY + label + ":" + Ansi.RESET + " " + Ansi.BOLD + value + Ansi.RESET;
+    }
+
+    private String colorByWeaponType(models.weapons.WeaponType type) {
+        if (type == null)
+            return Ansi.WHITE;
+
+        return switch (type) {
+            case PHYSICAL -> Ansi.MAGENTA;
+            case RANGE -> Ansi.BRIGHT_BLUE;
+            case MAGICAL -> Ansi.ORANGE;
+            default -> Ansi.WHITE;
+        };
+    }
+
+    /**
+     * Mateix wrap simple que al WeaponMenu per no trencar la UI.
+     */
+    private static java.util.List<String> wrap(String text, int maxWidth) {
+        if (text == null)
+            return java.util.List.of();
+        text = text.trim();
+        if (text.isEmpty())
+            return java.util.List.of();
+        if (text.length() <= maxWidth)
+            return java.util.List.of(text);
+
+        java.util.ArrayList<String> lines = new java.util.ArrayList<>();
+        String[] words = text.split("\\s+");
+        StringBuilder line = new StringBuilder();
+
+        for (String word : words) {
+            if (line.isEmpty()) {
+                line.append(word);
+                continue;
+            }
+
+            if (line.length() + 1 + word.length() <= maxWidth) {
+                line.append(' ').append(word);
+            } else {
+                lines.add(line.toString());
+                line.setLength(0);
+                line.append(word);
+            }
+        }
+
+        if (!line.isEmpty())
+            lines.add(line.toString());
+        return lines;
     }
 }

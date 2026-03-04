@@ -157,7 +157,7 @@ public final class StatsBudget {
         }
     }
 
-    private record ScaledLimits(int minValue, int maxValue) {
+    public record ScaledLimits(int minValue, int maxValue) {
     }
 
     private record AutoParams(
@@ -537,7 +537,7 @@ public final class StatsBudget {
     /**
      * Escala límits (min/max) en funció del total de punts.
      */
-    private static ScaledLimits scaleLimits(int totalPoints) {
+    public static ScaledLimits scaleLimits(int totalPoints) {
         int statCount = STAT_COUNT;
 
         double average = (double) totalPoints / statCount;

@@ -156,7 +156,7 @@ public enum Arsenal {
                 name, description,
                 baseDamage, criticalProb, criticalDamage,
                 type, attack, manaPrice,
-                passives);
+                passives, this);
     }
 
     public String getName() {

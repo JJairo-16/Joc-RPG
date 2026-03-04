@@ -28,6 +28,8 @@ public class Weapon {
 
     private final List<WeaponPassive> passives;
 
+    private final Arsenal id;
+
     // Estat intern per informar del resultat de l'últim atac bàsic.
     private boolean lastWasCrit = false;
     private double lastAttackDamage = 0;
@@ -41,7 +43,8 @@ public class Weapon {
             WeaponType type,
             Attack attack,
             double price,
-            List<WeaponPassive> passives) {
+            List<WeaponPassive> passives,
+        Arsenal id) {
         this.name = name;
         this.description = description;
 
@@ -55,6 +58,7 @@ public class Weapon {
 
         // Si no hi ha passius, fem servir una llista immutable buida per evitar nulls.
         this.passives = (passives == null) ? List.of() : passives;
+        this.id = id;
     }
 
     // --- Accés bàsic (getters) ---
@@ -192,5 +196,9 @@ public class Weapon {
     /** Arrodoneix a 2 decimals. */
     private double round2(double n) {
         return Math.round(n * 100.0) / 100.0;
+    }
+
+    public Arsenal getId() {
+        return id;
     }
 }
