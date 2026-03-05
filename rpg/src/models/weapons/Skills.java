@@ -15,7 +15,7 @@ import utils.rng.GrimoriCodeGenerator;
 /**
  * Habilitats especials relacionades amb armes.
  */
-public class Skills {
+public final class Skills {
 
     private Skills() {
     }
@@ -262,7 +262,7 @@ public class Skills {
         if (seconds <= ok) {
             // de 1.25 cap a 1.00
             double t = (seconds - fast) / (ok - fast);
-            t = Math.clamp(t, 0.0, 1.0);
+            t = clamp01(t);
 
             double curve = Math.pow(t, 0.85);
 
@@ -270,7 +270,7 @@ public class Skills {
         } else {
             // de 1.00 cap a 0.72 (una mica més de càstig per tardar)
             double t = (seconds - ok) / (slow - ok);
-            t = Math.clamp(t, 0.0, 1.0);
+            t = clamp01(t);
 
             double curve = Math.pow(t, 1.10);
 
@@ -453,14 +453,21 @@ public class Skills {
         return Math.round(n * 100.0) / 100.0;
     }
 
+    private static double clamp01(double n) {
+        return Math.clamp(n, 0.0, 1.0);
+    }
+
     private static String spaced(String s) {
         int n = s.length();
         if (n == 0)
             return s;
-        StringBuilder b = new StringBuilder(n * 2 - 1);
-        b.append(s.charAt(0));
+
+        StringBuilder sb = new StringBuilder(n * 2 - 1);
+        sb.append(s.charAt(0));
+        
         for (int i = 1; i < n; i++)
-            b.append(' ').append(s.charAt(i));
-        return b.toString();
+            sb.append(' ').append(s.charAt(i));
+        
+        return sb.toString();
     }
 }

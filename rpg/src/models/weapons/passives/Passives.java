@@ -10,7 +10,7 @@ import models.weapons.Weapon;
  * Fàbrica d'efectes passius d'arma.
  * Conté helpers per crear {@link WeaponPassive} reutilitzables.
  */
-public class Passives {
+public final class Passives {
     private Passives() {
         // Classe utilitària: no instanciable.
     }

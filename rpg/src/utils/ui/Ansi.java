@@ -1,6 +1,6 @@
 package utils.ui;
 
-public class Ansi {
+public final class Ansi {
     private Ansi() {
     }
 

@@ -1,6 +1,7 @@
 import creator.CharacterCreator;
 import models.characters.Character;
-
+import utils.input.WeaponMenu;
+import utils.ui.LoadingDots;
 import game.GameLoop;
 
 public class App {
@@ -10,6 +11,10 @@ public class App {
     }
 
     public void run() {
+        try (LoadingDots ld = new LoadingDots()) {
+            WeaponMenu.preloadCards();
+        }
+
         Character p1 = CharacterCreator.createDebugCharacter();
         Character p2 = CharacterCreator.createDebugCharacter();
         GameLoop game = new GameLoop(p1, p2);

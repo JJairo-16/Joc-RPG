@@ -83,7 +83,7 @@ public enum Arsenal {
             Skills::nothing,
             executor(0.30, 0.25)),
     CHRONO_WEAVER_STAFF(
-            "Bastó Tejedor del Tiempo",
+            "Teixidor del temps",
             "Un bastó antic que distorsiona el flux temporal. "
                     + "Els seus atacs poden repetir-se en un eco del passat.",
             88, 0.14, 1.60,

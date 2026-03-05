@@ -132,8 +132,8 @@ public class Weapon {
     public AttackResult basicAttackWithMessage(Statistics stats, Random rng) {
         double dmg = basicAttack(stats, rng);
         return lastWasCrit
-                ? new AttackResult(dmg, "Llença un cop crític.")
-                : new AttackResult(dmg, "Llença un atac.");
+                ? new AttackResult(dmg, "llença un cop crític.")
+                : new AttackResult(dmg, "llença un atac.");
     }
 
     public boolean lastWasCritic() {

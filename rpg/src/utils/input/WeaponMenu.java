@@ -8,6 +8,7 @@ import models.characters.Statistics;
 import models.weapons.Arsenal;
 import models.weapons.WeaponType;
 import utils.cache.TextWrapCache;
+import utils.cache.WeaponCardCache;
 import utils.ui.Ansi;
 import utils.ui.Cleaner;
 import utils.ui.Prettier;
@@ -25,10 +26,11 @@ public final class WeaponMenu {
     private static final Cleaner cls = new Cleaner();
     private static final Scanner scanner = new Scanner(System.in);
     private static final TextWrapCache WRAP_CACHE = new TextWrapCache();
+    private static final WeaponCardCache weaponCardCache = new WeaponCardCache();
 
     // Separador reutilitzable per evitar concatenacions repetides
-    private static final String CARD_SEPARATOR =
-            "   " + Ansi.DARK_GRAY + "────────────────────────────────────────────────────────" + Ansi.RESET + "\n";
+    private static final String CARD_SEPARATOR = "   " + Ansi.DARK_GRAY
+            + "────────────────────────────────────────────────────────" + Ansi.RESET + "\n";
 
     private WeaponMenu() {
     }
@@ -89,7 +91,8 @@ public final class WeaponMenu {
     }
 
     /**
-     * Variant còmoda: retorna directament l'{@link Arsenal} escollit (o {@code null}
+     * Variant còmoda: retorna directament l'{@link Arsenal} escollit (o
+     * {@code null}
      * si es cancel·la).
      *
      * IMPORTANT:
@@ -200,11 +203,13 @@ public final class WeaponMenu {
      */
     public static Arsenal chooseWeaponEntryWithFilters(List<Arsenal> weapons, String title, Statistics stats) {
         int idx = chooseWeaponWithFilters(weapons, title, stats);
-        if (weapons == null) return null;
+        if (weapons == null)
+            return null;
         return (idx < 0) ? null : weapons.get(idx);
     }
 
-    public static int chooseWeaponWithFilters(List<Arsenal> weapons, String title, Statistics stats, FilterState state) {
+    public static int chooseWeaponWithFilters(List<Arsenal> weapons, String title, Statistics stats,
+            FilterState state) {
         if (weapons == null || weapons.isEmpty()) {
             Prettier.warn("No hi ha armes disponibles.");
             Menu.pause();
@@ -395,8 +400,10 @@ public final class WeaponMenu {
     }
 
     private static void appendTitle(StringBuilder sb, String title) {
-        // No podem garantir que Prettier tingui versió "toString", així que fem un títol senzill.
-        // Si vols exactament el mateix estil, pots afegir un Prettier.appendTitle(sb, title).
+        // No podem garantir que Prettier tingui versió "toString", així que fem un
+        // títol senzill.
+        // Si vols exactament el mateix estil, pots afegir un Prettier.appendTitle(sb,
+        // title).
         sb.append(Ansi.BOLD).append(title).append(Ansi.RESET).append("\n\n");
     }
 
@@ -405,20 +412,20 @@ public final class WeaponMenu {
         String type = Ansi.BOLD + typeFilter.getLabel() + Ansi.RESET;
 
         sb.append(Ansi.DARK_GRAY)
-          .append("Filtres:")
-          .append(Ansi.RESET)
-          .append("  [F] Equipables: ")
-          .append(eq)
-          .append("   [T] Tipus: ")
-          .append(type)
-          .append('\n');
+                .append("Filtres:")
+                .append(Ansi.RESET)
+                .append("  [F] Equipables: ")
+                .append(eq)
+                .append("   [T] Tipus: ")
+                .append(type)
+                .append('\n');
     }
 
     private static void appendWeapons(StringBuilder sb, List<Arsenal> weapons) {
         sb.append(Ansi.DARK_GRAY).append(Ansi.BOLD).append("1.").append(Ansi.RESET)
-          .append(' ')
-          .append(Ansi.DARK_GRAY).append("Cancelar").append(Ansi.RESET)
-          .append('\n');
+                .append(' ')
+                .append(Ansi.DARK_GRAY).append("Cancelar").append(Ansi.RESET)
+                .append('\n');
 
         int num = 2;
         for (int i = 0; i < weapons.size(); i++) {
@@ -434,15 +441,15 @@ public final class WeaponMenu {
             Statistics stats) {
 
         sb.append(Ansi.DARK_GRAY).append(Ansi.BOLD).append("1.").append(Ansi.RESET)
-          .append(' ')
-          .append(Ansi.DARK_GRAY).append("Cancelar").append(Ansi.RESET)
-          .append('\n');
+                .append(' ')
+                .append(Ansi.DARK_GRAY).append("Cancelar").append(Ansi.RESET)
+                .append('\n');
 
         if (filtered.isEmpty()) {
             sb.append(Ansi.DARK_GRAY)
-              .append("  (No hi ha armes amb aquests filtres. Prem 'f' o 't' per canviar.)")
-              .append(Ansi.RESET)
-              .append('\n');
+                    .append("  (No hi ha armes amb aquests filtres. Prem 'f' o 't' per canviar.)")
+                    .append(Ansi.RESET)
+                    .append('\n');
             return;
         }
 
@@ -453,53 +460,86 @@ public final class WeaponMenu {
         }
     }
 
-    private static void appendWeaponCard(StringBuilder sb, int optionNumber, Arsenal w, Statistics stats, boolean equippable) {
-        String num = Ansi.CYAN + Ansi.BOLD + optionNumber + "." + Ansi.RESET;
-        String name = Ansi.WHITE + Ansi.BOLD + w.getName() + Ansi.RESET;
+    private static void appendWeaponCard(
+            StringBuilder out,
+            int optionNumber,
+            Arsenal w,
+            Statistics stats,
+            boolean equippable) {
+
+        if (w == null) {
+            return;
+        }
+
+        final boolean showEquipTag = (stats != null);
+
+        final int key = weaponCardCache.keyOf(w, showEquipTag, equippable);
+
+        String cachedCard = weaponCardCache.cardOf(key);
+        if (cachedCard != null) {
+            out.append(Ansi.CYAN).append(Ansi.BOLD).append(optionNumber).append(".").append(Ansi.RESET);
+            out.append(cachedCard);
+            return;
+        }
+
+        StringBuilder card = new StringBuilder(256);
+
+        card.append(' ')
+                .append(Ansi.WHITE).append(Ansi.BOLD).append(w.getName()).append(Ansi.RESET)
+                .append(' ');
 
         WeaponType wt = w.getType();
         String typeName = (wt == null) ? "?" : wt.getName();
-        String type = colorByType(wt) + "[" + typeName + "]" + Ansi.RESET;
 
-        String equipTag = "";
-        if (stats != null) {
-            equipTag = equippable
-                    ? (" " + Ansi.GREEN + Ansi.BOLD + "(EQUIPABLE)" + Ansi.RESET)
-                    : (" " + Ansi.DARK_GRAY + "(NO EQUIPABLE)" + Ansi.RESET);
-        }
+        card.append(colorByType(wt))
+                .append('[').append(typeName).append(']')
+                .append(Ansi.RESET);
 
-        sb.append(num).append(' ').append(name).append(' ').append(type).append(equipTag).append('\n');
-
-        String desc = w.getDescription();
-        if (desc != null) {
-            desc = desc.trim();
-            if (!desc.isEmpty()) {
-                for (String line : WRAP_CACHE.get(desc, 78)) {
-                    sb.append("   ").append(Ansi.DARK_GRAY).append(line).append(Ansi.RESET).append('\n');
-                }
+        if (showEquipTag) {
+            card.append(' ');
+            if (equippable) {
+                card.append(Ansi.GREEN).append(Ansi.BOLD).append("(EQUIPABLE)").append(Ansi.RESET);
+            } else {
+                card.append(Ansi.DARK_GRAY).append("(NO EQUIPABLE)").append(Ansi.RESET);
             }
         }
 
-        sb.append("   ")
-          .append(Ansi.GREEN).append("Dany: ").append(Ansi.RESET).append(Ansi.BOLD).append(w.getBaseDamage()).append(Ansi.RESET)
-          .append("   ")
-          .append(Ansi.YELLOW).append("Crit: ").append(Ansi.RESET).append(Ansi.BOLD)
-          .append(roundPer(w.getCriticalProb())).append("%").append(Ansi.RESET)
-          .append("   ")
-          .append(Ansi.YELLOW).append("Mult: ").append(Ansi.RESET).append(Ansi.BOLD).append("x")
-          .append(round2(w.getCriticalDamage())).append(Ansi.RESET)
-          .append("   ");
+        card.append('\n');
 
-        if (w.getManaPrice() > 0) {
-            sb.append(Ansi.BRIGHT_BLUE).append("Mana: ").append(Ansi.RESET).append(Ansi.BOLD)
-              .append(Math.round(w.getManaPrice()))
-              .append(Ansi.RESET);
-        } else {
-            sb.append(Ansi.DARK_GRAY).append("Mana: -").append(Ansi.RESET);
+        String desc = w.getDescription();
+        if (desc != null && !desc.isBlank()) {
+            for (String line : WRAP_CACHE.get(desc, 78)) {
+                card.append("   ").append(Ansi.DARK_GRAY).append(line).append(Ansi.RESET).append('\n');
+            }
         }
-        sb.append('\n');
 
-        sb.append(CARD_SEPARATOR);
+        card.append("   ")
+                .append(Ansi.GREEN).append("Dany: ").append(Ansi.RESET).append(Ansi.BOLD).append(w.getBaseDamage())
+                .append(Ansi.RESET)
+                .append("   ")
+                .append(Ansi.YELLOW).append("Crit: ").append(Ansi.RESET).append(Ansi.BOLD)
+                .append(roundPer(w.getCriticalProb())).append("%").append(Ansi.RESET)
+                .append("   ")
+                .append(Ansi.YELLOW).append("Mult: ").append(Ansi.RESET).append(Ansi.BOLD).append("x")
+                .append(round2(w.getCriticalDamage())).append(Ansi.RESET)
+                .append("   ");
+
+        double manaPrice = w.getManaPrice();
+        if (manaPrice > 0) {
+            card.append(Ansi.BRIGHT_BLUE).append("Mana: ").append(Ansi.RESET).append(Ansi.BOLD)
+                    .append(Math.round(manaPrice))
+                    .append(Ansi.RESET);
+        } else {
+            card.append(Ansi.DARK_GRAY).append("Mana: -").append(Ansi.RESET);
+        }
+        card.append('\n');
+        card.append(CARD_SEPARATOR);
+
+        String cardStr = card.toString();
+        weaponCardCache.save(key, cardStr);
+
+        out.append(Ansi.CYAN).append(Ansi.BOLD).append(optionNumber).append(".").append(Ansi.RESET);
+        out.append(cardStr);
     }
 
     private static Integer tryParseInt(String s) {
@@ -588,5 +628,23 @@ public final class WeaponMenu {
 
     private static int roundPer(double n) {
         return (int) Math.round(n * 100.0);
+    }
+
+    private static final Statistics DUMMY_STATS = new Statistics(new int[] { 20, 20, 20, 20, 20, 20, 20 });
+
+    public static void preloadCards() {
+        StringBuilder sink = new StringBuilder(512);
+        Statistics dummyStats = DUMMY_STATS;
+
+        final Arsenal[] weapons = Arsenal.values();
+        for (Arsenal w : weapons) {
+            sink.setLength(0);
+            appendWeaponCard(sink, 1, w, null, false);
+
+            sink.setLength(0);
+            appendWeaponCard(sink, 1, w, dummyStats, false);
+        }
+
+        sink.setLength(0);
     }
 }

@@ -229,7 +229,7 @@ public class GameLoop {
         sb.append('\n');
 
         if (weapon != null) {
-            appendWeaponEquippedCard(sb, weapon, stats);
+            appendWeaponEquippedCard(sb, weapon);
         } else {
             sb.append(" ").append(Ansi.DARK_GRAY).append("Arma equipada:").append(Ansi.RESET).append(' ')
                     .append(Ansi.BOLD).append("Cap").append(Ansi.RESET).append('\n');
@@ -240,27 +240,24 @@ public class GameLoop {
     }
 
     private void appendPlayerCard(StringBuilder sb, Character p, Breed breed, Statistics s, Weapon weapon) {
-        String name = Ansi.WHITE + Ansi.BOLD + p.getName() + Ansi.RESET;
-        String age = Ansi.DARK_GRAY + "Edat: " + Ansi.RESET + Ansi.BOLD + p.getAge() + Ansi.RESET;
-
-        String breedName = Ansi.CYAN + Ansi.BOLD + breed.getName() + Ansi.RESET;
-        int bonusPct = (int) Math.round(breed.bonus() * 100.0);
-        String bonus = Ansi.GREEN + "Bonus: " + Ansi.RESET
-                + Ansi.BOLD + "+" + bonusPct + "%" + Ansi.RESET
-                + Ansi.DARK_GRAY + " a " + Ansi.RESET
-                + Ansi.BOLD + breed.bonusStat().getName() + Ansi.RESET;
-
-        String weaponTag = (weapon == null)
-                ? (Ansi.DARK_GRAY + "(SENSE ARMA)" + Ansi.RESET)
-                : (Ansi.GREEN + Ansi.BOLD + "(ARMA EQUIPADA)" + Ansi.RESET);
-
         // Capçalera
-        sb.append(' ').append(name)
+        sb.append(' ')
+                .append(Ansi.WHITE).append(Ansi.BOLD).append(p.getName()).append(Ansi.RESET)
                 .append("  ").append(Ansi.DARK_GRAY).append('·').append(Ansi.RESET).append("  ")
-                .append(age)
+                .append(Ansi.DARK_GRAY).append("Edat: ").append(Ansi.RESET)
+                .append(Ansi.BOLD).append(p.getAge()).append(Ansi.RESET)
                 .append('\n');
 
-        sb.append(' ').append(breedName).append(' ').append(weaponTag).append('\n');
+        sb.append(' ')
+                .append(Ansi.CYAN).append(Ansi.BOLD).append(breed.getName()).append(Ansi.RESET)
+                .append(' ');
+
+        if (weapon == null) {
+            sb.append(Ansi.DARK_GRAY).append("(SENSE ARMA)").append(Ansi.RESET);
+        } else {
+            sb.append(Ansi.GREEN).append(Ansi.BOLD).append("(ARMA EQUIPADA)").append(Ansi.RESET);
+        }
+        sb.append('\n');
 
         // Descripció raça (wrap)
         String desc = breed.getDescription() == null ? "" : breed.getDescription().trim();
@@ -270,7 +267,13 @@ public class GameLoop {
             }
         }
 
-        sb.append("   ").append(bonus).append('\n');
+        int bonusPct = (int) Math.round(breed.bonus() * 100.0);
+        sb.append("   ")
+                .append(Ansi.GREEN).append("Bonus: ").append(Ansi.RESET)
+                .append(Ansi.BOLD).append('+').append(bonusPct).append('%').append(Ansi.RESET)
+                .append(Ansi.DARK_GRAY).append(" a ").append(Ansi.RESET)
+                .append(Ansi.BOLD).append(breed.bonusStat().getName()).append(Ansi.RESET)
+                .append('\n');
 
         // Stats en format compacte (2 línies tipus “barra d’stats”)
         sb.append('\n');
@@ -292,20 +295,15 @@ public class GameLoop {
                 .append(Ansi.RESET).append('\n');
     }
 
-    private void appendWeaponEquippedCard(StringBuilder sb, Weapon w, Statistics stats) {
-        String name = Ansi.WHITE + Ansi.BOLD + w.getName() + Ansi.RESET;
-
+    private void appendWeaponEquippedCard(StringBuilder sb, Weapon w) {
         WeaponType wt = w.getType();
         String typeName = (wt == null) ? "?" : wt.getName();
-        String type = colorByWeaponType(wt) + "[" + typeName + "]" + Ansi.RESET;
 
-        // “Equipable” aquí normalment sempre serà true perquè ja la tens equipada,
-        // però ho deixo coherent.
-        String equipTag = (stats != null && wt != null && w.canEquip(stats))
-                ? (" " + Ansi.GREEN + Ansi.BOLD + "(EQUIPABLE)" + Ansi.RESET)
-                : (" " + Ansi.DARK_GRAY + "(NO EQUIPABLE)" + Ansi.RESET);
-
-        sb.append(' ').append(name).append(' ').append(type).append(equipTag).append('\n');
+        sb.append(' ')
+                .append(Ansi.WHITE).append(Ansi.BOLD).append(w.getName()).append(Ansi.RESET)
+                .append(' ')
+                .append(colorByWeaponType(wt)).append('[').append(typeName).append(']').append(Ansi.RESET)
+                .append('\n');
 
         String desc = w.getDescription() == null ? "" : w.getDescription().trim();
         if (!desc.isEmpty()) {
@@ -314,20 +312,25 @@ public class GameLoop {
             }
         }
 
-        String dmg = Ansi.GREEN + "Dany: " + Ansi.RESET + Ansi.BOLD + w.getBaseDamage() + Ansi.RESET;
-        String crit = Ansi.YELLOW + "Crit: " + Ansi.RESET + Ansi.BOLD
-                + String.format("%.0f%%", w.getCriticalProb() * 100.0) + Ansi.RESET;
-        String mult = Ansi.YELLOW + "Mult: " + Ansi.RESET + Ansi.BOLD
-                + String.format("x%.2f", w.getCriticalDamage()) + Ansi.RESET;
+        sb.append("   ")
+                .append(Ansi.GREEN).append("Dany: ").append(Ansi.RESET).append(Ansi.BOLD)
+                .append(w.getBaseDamage()).append(Ansi.RESET)
+                .append("   ")
+                .append(Ansi.YELLOW).append("Crit: ").append(Ansi.RESET).append(Ansi.BOLD)
+                .append(roundPer(w.getCriticalProb())).append('%').append(Ansi.RESET)
+                .append("   ")
+                .append(Ansi.YELLOW).append("Mult: ").append(Ansi.RESET).append(Ansi.BOLD)
+                .append('x').append(round2(w.getCriticalDamage())).append(Ansi.RESET)
+                .append("   ");
 
-        String mana = (w.getManaPrice() > 0)
-                ? (Ansi.BRIGHT_BLUE + "Mana: " + Ansi.RESET + Ansi.BOLD + String.format("%.0f", w.getManaPrice())
-                        + Ansi.RESET)
-                : (Ansi.DARK_GRAY + "Mana: -" + Ansi.RESET);
+        if (w.getManaPrice() > 0) {
+            sb.append(Ansi.BRIGHT_BLUE).append("Mana: ").append(Ansi.RESET).append(Ansi.BOLD)
+                    .append(Math.round(w.getManaPrice())).append(Ansi.RESET);
+        } else {
+            sb.append(Ansi.DARK_GRAY).append("Mana: -").append(Ansi.RESET);
+        }
 
-        sb.append("   ").append(dmg).append("   ").append(crit).append("   ").append(mult).append("   ").append(mana)
-                .append('\n');
-
+        sb.append('\n');
         sb.append(HR);
     }
 
@@ -346,5 +349,13 @@ public class GameLoop {
             case MAGICAL -> Ansi.ORANGE;
             default -> Ansi.WHITE;
         };
+    }
+
+    private static double round2(double n) {
+        return Math.round(n * 100.0) / 100.0;
+    }
+
+    private static int roundPer(double n) {
+        return (int) Math.round(n * 100.0);
     }
 }

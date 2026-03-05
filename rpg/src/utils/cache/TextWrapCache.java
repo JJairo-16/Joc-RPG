@@ -15,7 +15,8 @@ import java.util.regex.Pattern;
  * </p>
  *
  * <p>
- * Aquesta implementació és una LRU (Least Recently Used): quan s'arriba al límit
+ * Aquesta implementació és una LRU (Least Recently Used): quan s'arriba al
+ * límit
  * d'entrades, s'expulsen automàticament les menys utilitzades per evitar que la
  * caché creixi massa.
  * </p>
@@ -69,11 +70,13 @@ public class TextWrapCache {
      * Retorna el text amb wrap aplicat, utilitzant caché si ja s'ha calculat.
      */
     public List<String> get(String text, int width) {
-        if (text == null || text.isBlank()) {
+        if (text == null)
             return List.of();
-        }
 
         final String trimmed = text.trim();
+        if (trimmed.isEmpty())
+            return List.of();
+
         final Key key = new Key(trimmed, width);
 
         // Implementació manual per evitar computeIfAbsent (que faria wrap dins el lock

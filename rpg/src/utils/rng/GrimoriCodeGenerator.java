@@ -26,8 +26,8 @@ public class GrimoriCodeGenerator {
      * @param maxConsecutive màxim de dígits consecutius iguals permesos (>= 1)
      */
     public GrimoriCodeGenerator(int length, int minDigit, int maxDigit, int maxConsecutive) {
-        if (length < 0) {
-            throw new IllegalArgumentException("La longitud ha de ser >= 0");
+        if (length < 1) {
+            throw new IllegalArgumentException("La longitud ha de ser >= 1");
         }
         if (minDigit > maxDigit) {
             throw new IllegalArgumentException("minDigit ha de ser <= maxDigit");
@@ -51,7 +51,11 @@ public class GrimoriCodeGenerator {
             throw new IllegalArgumentException(
                     "Configuració impossible: només hi ha un dígit al rang i maxConsecutive és massa petit");
         }
+
+        this.sb = new StringBuilder(length);
     }
+
+    private final StringBuilder sb;
 
     /**
      * Genera un nou codi complint les restriccions configurades.
@@ -59,11 +63,7 @@ public class GrimoriCodeGenerator {
      * @return el codi generat en format String
      */
     public String generate() {
-        if (length == 0) {
-            return "";
-        }
-
-        StringBuilder code = new StringBuilder(length);
+        StringBuilder code = sb;
 
         int last = 0;
         boolean hasLast = false;

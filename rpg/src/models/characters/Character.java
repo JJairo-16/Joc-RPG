@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
-import java.util.Iterator;
 
 import models.effects.Effect;
 import models.weapons.AttackResult;
@@ -22,8 +21,8 @@ import models.weapons.passives.HitContext;
 public class Character {
 
     private static final int TOTAL_POINTS = 140;
-    private static final int MIN_STAT = 5;
-    private static final int MIN_CONSTITUTION = 10; // mínim específic per a la vida
+    private static final int MIN_STAT = 10;
+    private static final int MIN_CONSTITUTION = MIN_STAT + 2; // mínim específic per a la vida
 
     private final String name;
     private final int age;
@@ -243,6 +242,11 @@ public class Character {
         if (incoming == null)
             return;
 
+        if (effects.isEmpty()) {
+            effects.add(incoming);
+            return;
+        }
+
         for (int i = 0; i < effects.size(); i++) {
             Effect existing = effects.get(i);
 
@@ -321,11 +325,7 @@ public class Character {
         if (effects.isEmpty())
             return;
 
-        for (Iterator<Effect> it = effects.iterator(); it.hasNext();) {
-            Effect e = it.next();
-            if (e.isExpired())
-                it.remove();
-        }
+        effects.removeIf(Effect::isExpired);
     }
 
     /**
