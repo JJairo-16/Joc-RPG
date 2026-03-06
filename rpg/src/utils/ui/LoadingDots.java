@@ -3,15 +3,37 @@ package utils.ui;
 import java.io.PrintStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * Animació simple de "Loading..." a la consola.
+ *
+ * <p>
+ * Mostra punts animats en una mateixa línia utilitzant {@code \r}.
+ * Funciona bé amb {@code try-with-resources} gràcies a {@link AutoCloseable}.
+ * </p>
+ */
 public final class LoadingDots implements AutoCloseable {
+
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final Thread worker;
     private final PrintStream out;
 
+    /**
+     * Constructor amb configuració per defecte.
+     */
     public LoadingDots() {
-        this(System.out, 350, new String[] { "Loading   ", "Loading.  ", "Loading.. ", "Loading..." });
+        this(
+                System.out,
+                350,
+                new String[] { "Loading   ", "Loading.  ", "Loading.. ", "Loading..." });
     }
 
+    /**
+     * Crea una animació de càrrega personalitzada.
+     *
+     * @param out         flux de sortida
+     * @param frameMillis temps entre fotogrames
+     * @param frames      seqüència de textos a mostrar
+     */
     public LoadingDots(PrintStream out, long frameMillis, String[] frames) {
         this.out = out;
 
@@ -20,7 +42,7 @@ public final class LoadingDots implements AutoCloseable {
             int n = frames.length;
 
             while (running.get()) {
-                // \r vuelve al inicio de la línea, sin salto
+                // \r torna a l'inici de la línia sense salt
                 out.print("\r" + frames[i++ % n]);
                 out.flush();
 
@@ -37,10 +59,14 @@ public final class LoadingDots implements AutoCloseable {
         this.worker.start();
     }
 
+    /**
+     * Atura l'animació i neteja la línia de consola.
+     */
     @Override
     public void close() {
         running.set(false);
         worker.interrupt();
+
         try {
             worker.join();
         } catch (InterruptedException e) {

@@ -5,15 +5,15 @@ package models.effects;
  *
  * <p>
  * No defineix què fa l'efecte; només guarda la seva “vida útil”:
- * duració, càrregues, stacks i cooldown.
+ * duració, càrregues, apilaments i cooldown.
  * </p>
  */
 public final class EffectState {
 
-    private int charges;          // càrregues disponibles (<=0 = expirat si en fa servir)
-    private int stacks;           // apilaments (>=1 habitualment)
-    private int remainingTurns;   // torns restants (<=0 = expirat si l'efecte té duració)
-    private int cooldownTurns;    // torns de cooldown (0 = llest)
+    private int charges;        // càrregues disponibles (<=0 = expirat si en fa servir)
+    private int stacks;         // apilaments (>=1 habitualment)
+    private int remainingTurns; // torns restants (<=0 = expirat si l'efecte té duració)
+    private int cooldownTurns;  // torns de cooldown (0 = llest)
 
     public EffectState(int charges, int stacks, int remainingTurns, int cooldownTurns) {
         this.charges = Math.max(0, charges);
@@ -36,29 +36,51 @@ public final class EffectState {
 
     // ── Getters ──────────────────────────────────────────────────
 
-    public int charges() { return charges; }
-    public int stacks() { return stacks; }
-    public int remainingTurns() { return remainingTurns; }
-    public int cooldownTurns() { return cooldownTurns; }
+    public int charges() {
+        return charges;
+    }
+
+    public int stacks() {
+        return stacks;
+    }
+
+    public int remainingTurns() {
+        return remainingTurns;
+    }
+
+    public int cooldownTurns() {
+        return cooldownTurns;
+    }
 
     // ── Helpers de modificació ───────────────────────────────────
 
-    public boolean hasCharges() { return charges > 0; }
-    public boolean onCooldown() { return cooldownTurns > 0; }
+    public boolean hasCharges() {
+        return charges > 0;
+    }
+
+    public boolean onCooldown() {
+        return cooldownTurns > 0;
+    }
 
     public void addCharges(int amount, int maxCharges) {
-        if (amount <= 0) return;
+        if (amount <= 0) {
+            return;
+        }
         charges = Math.min(maxCharges, charges + amount);
     }
 
     public boolean consumeCharge() {
-        if (charges <= 0) return false;
+        if (charges <= 0) {
+            return false;
+        }
         charges--;
         return true;
     }
 
     public void addStacks(int amount, int maxStacks) {
-        if (amount <= 0) return;
+        if (amount <= 0) {
+            return;
+        }
         stacks = Math.min(maxStacks, stacks + amount);
     }
 
@@ -75,7 +97,9 @@ public final class EffectState {
     }
 
     public void tickDuration() {
-        if (remainingTurns > 0) remainingTurns--;
+        if (remainingTurns > 0) {
+            remainingTurns--;
+        }
     }
 
     public void setCooldown(int turns) {
@@ -83,14 +107,16 @@ public final class EffectState {
     }
 
     public void tickCooldown() {
-        if (cooldownTurns > 0) cooldownTurns--;
+        if (cooldownTurns > 0) {
+            cooldownTurns--;
+        }
     }
 
     /**
      * L'efecte es considera expirat si:
      * <ul>
-     *   <li>té duració i remainingTurns == 0</li>
-     *   <li>o té càrregues i charges == 0</li>
+     * <li>té duració i remainingTurns == 0</li>
+     * <li>o té càrregues i charges == 0</li>
      * </ul>
      *
      * <p>

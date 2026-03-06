@@ -112,9 +112,11 @@ public class Weapon {
      */
     public double basicAttack(Statistics stats, Random rng) {
         double baseDamage = type.getBasicDamage(damage, stats);
+        baseDamage *= damageVariance(rng);
         lastWasCrit = rollsCritical(stats, rng);
 
         if (!lastWasCrit) {
+            baseDamage = round2(baseDamage);
             lastAttackDamage = baseDamage;
             return baseDamage;
         }
@@ -123,6 +125,14 @@ public class Weapon {
         double multiplier = criticalDamage + stats.getLuck() * 0.01;
         lastAttackDamage = round2(baseDamage * multiplier);
         return lastAttackDamage;
+    }
+
+    private static final double DAMAGE_VARIANCE = 0.05;
+    private static final double DOWN_VARIANCE = 1.0 - DAMAGE_VARIANCE;
+    private static final double UP_VARIANCE = DAMAGE_VARIANCE * 2;
+
+    private double damageVariance(Random rng) {
+        return DOWN_VARIANCE + rng.nextDouble() * UP_VARIANCE;
     }
 
     /**

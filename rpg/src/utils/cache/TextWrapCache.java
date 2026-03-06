@@ -109,20 +109,20 @@ public class TextWrapCache {
      * Algoritme simple de wrap.
      */
     private List<String> wrap(String text, int maxWidth) {
-
-        if (text.length() <= maxWidth) {
+        final int textLength = text.length();
+        if (textLength <= maxWidth) {
             return List.of(text);
         }
 
         final String[] words = WHITESPACE.split(text);
 
         final int capacity = Math.clamp(
-                Math.max(1, text.length() / Math.max(1, maxWidth)),
+                Math.max(1, textLength / Math.max(1, maxWidth)),
                 1,
                 words.length);
 
         final ArrayList<String> lines = new ArrayList<>(capacity);
-        final StringBuilder line = new StringBuilder(Math.min(text.length(), maxWidth));
+        final StringBuilder line = new StringBuilder(Math.min(textLength, maxWidth));
 
         for (String word : words) {
 

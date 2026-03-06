@@ -6,12 +6,11 @@ import java.util.List;
 import java.util.Random;
 
 import models.effects.Effect;
+import models.effects.EffectResult;
+import models.effects.StackingRule;
 import models.weapons.AttackResult;
 import models.weapons.Weapon;
 import models.weapons.WeaponType;
-
-import models.effects.EffectResult;
-import models.effects.StackingRule;
 import models.weapons.passives.HitContext;
 
 /**
@@ -22,7 +21,8 @@ public class Character {
 
     private static final int TOTAL_POINTS = 140;
     private static final int MIN_STAT = 10;
-    private static final int MIN_CONSTITUTION = MIN_STAT + 2; // mínim específic per a la vida
+    /** Mínim específic per a la Constitució (vida). */
+    private static final int MIN_CONSTITUTION = MIN_STAT + 2;
 
     private final String name;
     private final int age;
@@ -35,8 +35,8 @@ public class Character {
     private final List<Effect> effects = new ArrayList<>();
 
     /**
-     * Crea un personatge i valida:
-     * nom, edat, longitud d'stats (7), mínims i suma total (140).
+     * Crea un personatge i valida: nom, edat, longitud d'stats (7), mínims i suma
+     * total ({@value #TOTAL_POINTS}).
      *
      * @param name  nom del personatge
      * @param age   edat del personatge
@@ -66,6 +66,10 @@ public class Character {
         return age;
     }
 
+    public Breed getBreed() {
+        return breed;
+    }
+
     public Statistics geStatistics() {
         return stats;
     }
@@ -82,8 +86,9 @@ public class Character {
      * @return {@code true} si s'ha equipat; {@code false} si no compleix requisits
      */
     public boolean setWeapon(Weapon w) {
-        if (!w.canEquip(stats))
+        if (!w.canEquip(stats)) {
             return false;
+        }
 
         weapon = w;
         return true;
@@ -145,6 +150,9 @@ public class Character {
 
     /**
      * Aplica dany directe (sense bloqueig ni esquiva).
+     *
+     * @param attack dany entrant
+     * @return resultat amb dany rebut i missatge
      */
     public Result getDamage(double attack) {
         stats.damage(attack);
@@ -159,9 +167,132 @@ public class Character {
         stats.reg();
     }
 
-    // -------------------------
-    // Helpers de validació
-    // -------------------------
+    public Random rng() {
+        return rng;
+    }
+
+    /**
+     * Aplica un efecte al personatge segons la seva {@link StackingRule}.
+     *
+     * <p>
+     * Si ja existeix un efecte amb la mateixa {@link Effect#key()}, aplica la regla:
+     * </p>
+     * <ul>
+     * <li>IGNORE: no fa res</li>
+     * <li>REPLACE: substitueix l'antic</li>
+     * <li>REFRESH / STACK: crida {@link Effect#mergeFrom(Effect)} sobre l'existent</li>
+     * </ul>
+     *
+     * @param incoming efecte entrant
+     */
+    public void addEffect(Effect incoming) {
+        if (incoming == null) {
+            return;
+        }
+
+        if (effects.isEmpty()) {
+            effects.add(incoming);
+            return;
+        }
+
+        for (int i = 0; i < effects.size(); i++) {
+            Effect existing = effects.get(i);
+
+            if (!existing.key().equals(incoming.key())) {
+                continue;
+            }
+
+            StackingRule rule = existing.stackingRule();
+
+            switch (rule) {
+                case IGNORE:
+                    return;
+
+                case REPLACE:
+                    effects.set(i, incoming);
+                    return;
+
+                case REFRESH, STACK:
+                    existing.mergeFrom(incoming);
+                    return;
+            }
+        }
+
+        effects.add(incoming);
+        effects.sort(Comparator.comparingInt(Effect::priority).reversed());
+    }
+
+    /**
+     * Executa els efectes del personatge en una fase del combat.
+     *
+     * <p>
+     * Retorna missatges per log i elimina els efectes expirats.
+     * </p>
+     */
+    public List<String> triggerEffects(HitContext ctx, HitContext.Phase phase, Random rng) {
+        if (effects.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> messages = new ArrayList<>();
+        triggerEffects(ctx, phase, rng, messages);
+        return messages;
+    }
+
+    /**
+     * Executa els efectes del personatge en una fase del combat.
+     *
+     * <p>
+     * Afegeix els missatges al paràmetre {@code out} i elimina els efectes expirats.
+     * </p>
+     *
+     * @param ctx   context de l'impacte
+     * @param phase fase del combat
+     * @param rng   generador aleatori a utilitzar
+     * @param out   llista on s'afegeixen els missatges
+     */
+    public void triggerEffects(HitContext ctx, HitContext.Phase phase, Random rng, List<String> out) {
+        if (effects.isEmpty()) {
+            return;
+        }
+
+        for (Effect e : effects) {
+            if (!e.isActive()) {
+                continue;
+            }
+
+            EffectResult r = e.onPhase(ctx, phase, rng);
+            if (r != null && r.message() != null && !r.message().isBlank()) {
+                out.add(r.message());
+            }
+        }
+
+        cleanupExpiredEffects();
+    }
+
+    /**
+     * Elimina efectes expirats.
+     */
+    private void cleanupExpiredEffects() {
+        if (effects.isEmpty()) {
+            return;
+        }
+
+        effects.removeIf(Effect::isExpired);
+    }
+
+    /**
+     * Exposa una vista dels efectes (útil per UI/debug).
+     *
+     * @return llista immutable d'efectes actuals
+     */
+    public List<Effect> getEffects() {
+        return List.copyOf(effects);
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers de validació i càlcul
+    // -------------------------------------------------------------------------
 
     private static void validateName(String name) {
         if (name == null || name.isBlank()) {
@@ -194,14 +325,12 @@ public class Character {
         }
 
         if (stats[2] < MIN_CONSTITUTION) {
-            throw new IllegalArgumentException(
-                    "La constitució (vida) ha de ser com a mínim " + MIN_CONSTITUTION);
+            throw new IllegalArgumentException("La constitució (vida) ha de ser com a mínim " + MIN_CONSTITUTION);
         }
 
         if (sum != TOTAL_POINTS) {
             throw new IllegalArgumentException(
-                    "La suma total de punts ha de ser exactament " + TOTAL_POINTS +
-                            ". Suma actual: " + sum);
+                    "La suma total de punts ha de ser exactament " + TOTAL_POINTS + ". Suma actual: " + sum);
         }
     }
 
@@ -214,124 +343,5 @@ public class Character {
         }
 
         return effectiveStats;
-    }
-
-    public Breed getBreed() {
-        return breed;
-    }
-
-    public Random rng() {
-        return rng;
-    }
-
-    /**
-     * Aplica un efecte al personatge segons la seva {@link StackingRule}.
-     *
-     * <p>
-     * Si ja existeix un efecte amb la mateixa {@link Effect#key()}, aplica la
-     * regla:
-     * </p>
-     * <ul>
-     * <li>IGNORE: no fa res</li>
-     * <li>REPLACE: substitueix l'antic</li>
-     * <li>REFRESH / STACK: crida {@link Effect#mergeFrom(Effect)} sobre
-     * l'existent</li>
-     * </ul>
-     */
-    public void addEffect(Effect incoming) {
-        if (incoming == null)
-            return;
-
-        if (effects.isEmpty()) {
-            effects.add(incoming);
-            return;
-        }
-
-        for (int i = 0; i < effects.size(); i++) {
-            Effect existing = effects.get(i);
-
-            if (!existing.key().equals(incoming.key()))
-                continue;
-
-            StackingRule rule = existing.stackingRule();
-
-            switch (rule) {
-                case IGNORE:
-                    return;
-
-                case REPLACE:
-                    effects.set(i, incoming);
-                    return;
-
-                case REFRESH, STACK:
-                    existing.mergeFrom(incoming);
-                    return;
-            }
-        }
-
-        // No existia: afegim
-        effects.add(incoming);
-
-        // Ordre consistent per prioritat
-        effects.sort(Comparator.comparingInt(Effect::priority).reversed());
-    }
-
-    /**
-     * Executa els efectes del personatge en una fase del combat.
-     *
-     * <p>
-     * Retorna missatges per log i elimina els efectes expirats.
-     * </p>
-     */
-    public List<String> triggerEffects(HitContext ctx, HitContext.Phase phase, Random rng) {
-        if (effects.isEmpty())
-            return List.of();
-
-        List<String> messages = new ArrayList<>();
-        triggerEffects(ctx, phase, rng, messages);
-
-        return messages;
-    }
-
-    /**
-     * Executa els efectes del personatge en una fase del combat.
-     *
-     * <p>
-     * Retorna missatges per log i elimina els efectes expirats.
-     * </p>
-     */
-    public void triggerEffects(HitContext ctx, HitContext.Phase phase, Random rng, List<String> out) {
-        if (effects.isEmpty())
-            return;
-
-        for (Effect e : effects) {
-            if (!e.isActive())
-                continue;
-
-            EffectResult r = e.onPhase(ctx, phase, rng);
-            if (r != null && r.message() != null && !r.message().isBlank()) {
-                out.add(r.message());
-            }
-        }
-
-        // Neteja d'expirats (després d'executar)
-        cleanupExpiredEffects();
-    }
-
-    /**
-     * Elimina efectes expirats.
-     */
-    private void cleanupExpiredEffects() {
-        if (effects.isEmpty())
-            return;
-
-        effects.removeIf(Effect::isExpired);
-    }
-
-    /**
-     * (Opcional) Exposa una vista dels efectes, per UI/debug.
-     */
-    public List<Effect> getEffects() {
-        return List.copyOf(effects);
     }
 }

@@ -32,6 +32,12 @@ public final class WeaponMenu {
     private static final String CARD_SEPARATOR = "   " + Ansi.DARK_GRAY
             + "────────────────────────────────────────────────────────" + Ansi.RESET + "\n";
 
+    /**
+     * Guarda l'última UI renderitzada del menú filtrat per poder reutilitzar-la
+     * mentre no canviï l'estat visual.
+     */
+    private static MenuRenderCache lastMenuRender;
+
     private WeaponMenu() {
     }
 
@@ -53,20 +59,11 @@ public final class WeaponMenu {
             return -1;
         }
 
-        // Caché local per construir la UI amb un sol print per repintat
-        final StringBuilder sb = new StringBuilder(32_768);
+        final String renderedMenu = buildPlainMenu(weapons, title);
 
         while (true) {
             cls.clear();
-
-            sb.setLength(0);
-            appendTitle(sb, title);
-            appendWeapons(sb, weapons);
-            sb.append('\n');
-            sb.append("Seleccioni una arma, si us plau: ");
-
-            // Un sol write a consola per la UI
-            System.out.print(sb.toString());
+            System.out.print(renderedMenu);
 
             int option = getInteger();
             if (option == -1) {
@@ -74,12 +71,11 @@ public final class WeaponMenu {
                 continue;
             }
 
-            // 1 = Cancelar
             if (option == 1) {
                 return -1;
             }
 
-            int idx = option - 2; // 2.. => 0..
+            int idx = option - 2;
             if (idx >= 0 && idx < weapons.size()) {
                 return idx;
             }
@@ -134,28 +130,21 @@ public final class WeaponMenu {
         boolean onlyEquippable = false;
         TypeFilter typeFilter = TypeFilter.ALL;
 
-        boolean dirty = true;
-        List<FilteredItem> filtered = List.of();
-
-        final StringBuilder sb = new StringBuilder(64_000);
+        MenuLoopState menuState = new MenuLoopState();
 
         while (true) {
-            cls.clear();
+            boolean currentOnlyEquippable = onlyEquippable;
+            TypeFilter currentTypeFilter = typeFilter;
 
-            if (dirty) {
-                filtered = buildFilteredItems(weapons, stats, onlyEquippable, typeFilter);
-                dirty = false;
-            }
-
-            sb.setLength(0);
-            appendTitle(sb, title);
-            appendFilterBar(sb, onlyEquippable, typeFilter);
-            sb.append('\n');
-            appendWeaponsFiltered(sb, weapons, filtered, stats);
-            sb.append('\n');
-            sb.append("Opció (número), [F] equipables, [T] tipus: ");
-
-            System.out.print(sb.toString());
+            cls.clearAndPrint(
+                    () -> getFilteredMenuText(
+                            menuState,
+                            weapons,
+                            title,
+                            stats,
+                            currentOnlyEquippable,
+                            currentTypeFilter,
+                            false));
 
             String in = getInput();
             if (in == null) {
@@ -165,12 +154,13 @@ public final class WeaponMenu {
 
             if (in.equalsIgnoreCase("f")) {
                 onlyEquippable = !onlyEquippable;
-                dirty = true;
+                menuState.dirty = true;
                 continue;
             }
+
             if (in.equalsIgnoreCase("t")) {
                 typeFilter = typeFilter.next();
-                dirty = true;
+                menuState.dirty = true;
                 continue;
             }
 
@@ -181,19 +171,18 @@ public final class WeaponMenu {
                 continue;
             }
 
-            // 1 = Cancelar
             if (opt == 1) {
                 return -1;
             }
 
             int idxInFiltered = opt - 2;
-            if (idxInFiltered < 0 || idxInFiltered >= filtered.size()) {
-                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", filtered.size() + 1);
+            if (idxInFiltered < 0 || idxInFiltered >= menuState.filtered.size()) {
+                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", menuState.filtered.size() + 1);
                 Menu.pause();
                 continue;
             }
 
-            return filtered.get(idxInFiltered).index;
+            return menuState.filtered.get(idxInFiltered).index;
         }
     }
 
@@ -203,8 +192,9 @@ public final class WeaponMenu {
      */
     public static Arsenal chooseWeaponEntryWithFilters(List<Arsenal> weapons, String title, Statistics stats) {
         int idx = chooseWeaponWithFilters(weapons, title, stats);
-        if (weapons == null)
+        if (weapons == null) {
             return null;
+        }
         return (idx < 0) ? null : weapons.get(idx);
     }
 
@@ -216,7 +206,6 @@ public final class WeaponMenu {
             return -1;
         }
 
-        // Si no et passen estat, en creem un de local (sense “memòria”)
         if (state == null) {
             state = new FilterState();
         }
@@ -224,28 +213,21 @@ public final class WeaponMenu {
         boolean onlyEquippable = state.isOnlyEquippable();
         TypeFilter typeFilter = state.getTypeFilter();
 
-        boolean dirty = true;
-        List<FilteredItem> filtered = List.of();
-
-        final StringBuilder sb = new StringBuilder(64_000);
+        MenuLoopState menuState = new MenuLoopState();
 
         while (true) {
-            cls.clear();
+            boolean currentOnlyEquippable = onlyEquippable;
+            TypeFilter currentTypeFilter = typeFilter;
 
-            if (dirty) {
-                filtered = buildFilteredItems(weapons, stats, onlyEquippable, typeFilter);
-                dirty = false;
-            }
-
-            sb.setLength(0);
-            appendTitle(sb, title);
-            appendFilterBar(sb, onlyEquippable, typeFilter);
-            sb.append('\n');
-            appendWeaponsFiltered(sb, weapons, filtered, stats);
-            sb.append('\n');
-            sb.append("Opció (número), [F] equipables, [T] tipus: ");
-
-            System.out.print(sb.toString());
+            cls.clearAndPrint(
+                    () -> getFilteredMenuText(
+                            menuState,
+                            weapons,
+                            title,
+                            stats,
+                            currentOnlyEquippable,
+                            currentTypeFilter,
+                            true));
 
             String in = getInput();
             if (in == null) {
@@ -256,13 +238,14 @@ public final class WeaponMenu {
             if (in.equalsIgnoreCase("f")) {
                 onlyEquippable = !onlyEquippable;
                 state.setOnlyEquippable(onlyEquippable);
-                dirty = true;
+                menuState.dirty = true;
                 continue;
             }
+
             if (in.equalsIgnoreCase("t")) {
                 typeFilter = typeFilter.next();
                 state.setTypeFilter(typeFilter);
-                dirty = true;
+                menuState.dirty = true;
                 continue;
             }
 
@@ -280,8 +263,8 @@ public final class WeaponMenu {
             }
 
             int idxInFiltered = opt - 2;
-            if (idxInFiltered < 0 || idxInFiltered >= filtered.size()) {
-                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", filtered.size() + 1);
+            if (idxInFiltered < 0 || idxInFiltered >= menuState.filtered.size()) {
+                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", menuState.filtered.size() + 1);
                 Menu.pause();
                 continue;
             }
@@ -289,7 +272,7 @@ public final class WeaponMenu {
             state.setOnlyEquippable(onlyEquippable);
             state.setTypeFilter(typeFilter);
 
-            return filtered.get(idxInFiltered).index;
+            return menuState.filtered.get(idxInFiltered).index;
         }
     }
 
@@ -303,14 +286,30 @@ public final class WeaponMenu {
      * Element filtrat: guarda l'índex original i si és equipable (per evitar cridar
      * canEquip(stats) més d'un cop per repintat).
      */
-    private static final class FilteredItem {
-        final int index; // índex dins la llista original
-        final boolean equippable; // resultat de canEquip(stats) si stats != null
+    private record FilteredItem(int index, boolean equippable) {
+    }
 
-        FilteredItem(int index, boolean equippable) {
-            this.index = index;
-            this.equippable = equippable;
-        }
+    /**
+     * Captura mínima de l'últim menú renderitzat per reutilitzar-lo si no hi ha
+     * canvis visuals.
+     */
+    private record MenuRenderCache(
+            List<Arsenal> weaponsRef,
+            String title,
+            Statistics statsRef,
+            boolean onlyEquippable,
+            TypeFilter typeFilter,
+            int filteredHash,
+            String renderedMenu) {
+    }
+
+    /**
+     * Estat mutable del bucle de render del menú filtrat.
+     */
+    private static final class MenuLoopState {
+        private boolean dirty = true;
+        private List<FilteredItem> filtered = List.of();
+        private String renderedMenu;
     }
 
     /**
@@ -400,10 +399,6 @@ public final class WeaponMenu {
     }
 
     private static void appendTitle(StringBuilder sb, String title) {
-        // No podem garantir que Prettier tingui versió "toString", així que fem un
-        // títol senzill.
-        // Si vols exactament el mateix estil, pots afegir un Prettier.appendTitle(sb,
-        // title).
         sb.append(Ansi.BOLD).append(title).append(Ansi.RESET).append("\n\n");
     }
 
@@ -427,8 +422,10 @@ public final class WeaponMenu {
                 .append(Ansi.DARK_GRAY).append("Cancelar").append(Ansi.RESET)
                 .append('\n');
 
+        final int n = weapons.size();
         int num = 2;
-        for (int i = 0; i < weapons.size(); i++) {
+
+        for (int i = 0; i < n; i++) {
             Arsenal w = weapons.get(i);
             appendWeaponCard(sb, num++, w, null, false);
         }
@@ -472,7 +469,6 @@ public final class WeaponMenu {
         }
 
         final boolean showEquipTag = (stats != null);
-
         final int key = weaponCardCache.keyOf(w, showEquipTag, equippable);
 
         String cachedCard = weaponCardCache.cardOf(key);
@@ -532,6 +528,7 @@ public final class WeaponMenu {
         } else {
             card.append(Ansi.DARK_GRAY).append("Mana: -").append(Ansi.RESET);
         }
+
         card.append('\n');
         card.append(CARD_SEPARATOR);
 
@@ -540,6 +537,106 @@ public final class WeaponMenu {
 
         out.append(Ansi.CYAN).append(Ansi.BOLD).append(optionNumber).append(".").append(Ansi.RESET);
         out.append(cardStr);
+    }
+
+    private static String buildPlainMenu(List<Arsenal> weapons, String title) {
+        StringBuilder sb = new StringBuilder(32_768);
+
+        appendTitle(sb, title);
+        appendWeapons(sb, weapons);
+        sb.append('\n');
+        sb.append("Seleccioni una arma, si us plau: ");
+
+        return sb.toString();
+    }
+
+    private static String buildFilteredMenu(
+            List<Arsenal> weapons,
+            String title,
+            Statistics stats,
+            List<FilteredItem> filtered,
+            boolean onlyEquippable,
+            TypeFilter typeFilter) {
+
+        StringBuilder sb = new StringBuilder(64_000);
+
+        appendTitle(sb, title);
+        appendFilterBar(sb, onlyEquippable, typeFilter);
+        sb.append('\n');
+        appendWeaponsFiltered(sb, weapons, filtered, stats);
+        sb.append('\n');
+        sb.append("Opció (número), [F] equipables, [T] tipus: ");
+
+        return sb.toString();
+    }
+
+    private static String getFilteredMenuText(
+            MenuLoopState state,
+            List<Arsenal> weapons,
+            String title,
+            Statistics stats,
+            boolean onlyEquippable,
+            TypeFilter typeFilter,
+            boolean useSharedRenderCache) {
+
+        if (state.dirty) {
+            state.filtered = buildFilteredItems(weapons, stats, onlyEquippable, typeFilter);
+            state.renderedMenu = useSharedRenderCache
+                    ? getOrBuildFilteredMenu(weapons, title, stats, state.filtered, onlyEquippable, typeFilter)
+                    : buildFilteredMenu(weapons, title, stats, state.filtered, onlyEquippable, typeFilter);
+            state.dirty = false;
+        }
+
+        return state.renderedMenu;
+    }
+
+    private static String getOrBuildFilteredMenu(
+            List<Arsenal> weapons,
+            String title,
+            Statistics stats,
+            List<FilteredItem> filtered,
+            boolean onlyEquippable,
+            TypeFilter typeFilter) {
+
+        int filteredHash = hashFiltered(filtered);
+
+        if (lastMenuRender != null
+                && lastMenuRender.weaponsRef() == weapons
+                && lastMenuRender.statsRef() == stats
+                && equalsNullable(lastMenuRender.title(), title)
+                && lastMenuRender.onlyEquippable() == onlyEquippable
+                && lastMenuRender.typeFilter() == typeFilter
+                && lastMenuRender.filteredHash() == filteredHash) {
+            return lastMenuRender.renderedMenu();
+        }
+
+        String renderedMenu = buildFilteredMenu(weapons, title, stats, filtered, onlyEquippable, typeFilter);
+
+        lastMenuRender = new MenuRenderCache(
+                weapons,
+                title,
+                stats,
+                onlyEquippable,
+                typeFilter,
+                filteredHash,
+                renderedMenu);
+
+        return renderedMenu;
+    }
+
+    private static int hashFiltered(List<FilteredItem> filtered) {
+        int hash = 1;
+
+        for (FilteredItem item : filtered) {
+            hash = 31 * hash + item.index();
+            hash = 31 * hash + (item.equippable() ? 1 : 0);
+        }
+
+        return hash;
+    }
+
+    private static boolean equalsNullable(Object a, Object b) {
+        return a == b || (a != null && a.equals(b));
     }
 
     private static Integer tryParseInt(String s) {
@@ -570,6 +667,7 @@ public final class WeaponMenu {
             if (this == ALL) {
                 return true;
             }
+
             if (t == null) {
                 return false;
             }

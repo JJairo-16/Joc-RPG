@@ -5,47 +5,33 @@ import java.util.List;
 
 import models.characters.Breed;
 import models.characters.Character;
-
 import utils.input.Getters;
 import utils.input.Menu;
-import utils.ui.Prettier;
-import utils.ui.Ansi;
-
 import utils.rng.StatsBudget;
 import utils.rng.StatsBudget.Result;
 import utils.rng.StatsBudget.ScaledLimits;
+import utils.ui.Ansi;
+import utils.ui.Prettier;
 
 /**
  * Gestor de creació de personatges.
  *
  * <p>
- * Aquesta classe centralitza la lògica per crear una instància de
- * {@link Character}
+ * Aquesta classe centralitza la lògica per crear una instància de {@link Character}
  * demanant dades per consola. Permet dues vies de generació:
  * </p>
  * <ul>
- * <li><b>Automàtica</b>: reparteix els punts d'estadístiques i assigna una raça
- * mitjançant {@link StatsBudget}.</li>
- * <li><b>Manual</b>: l'usuari tria la raça i reparteix exactament
- * {@value #TOTAL_POINTS} punts entre 7 estadístiques.</li>
+ * <li><b>Automàtica</b>: reparteix els punts d'estadístiques i assigna una raça mitjançant {@link StatsBudget}.</li>
+ * <li><b>Manual</b>: l'usuari tria la raça i reparteix exactament {@value #TOTAL_POINTS} punts entre 7 estadístiques.</li>
  * </ul>
  *
  * <p>
- * <b>Nota:</b> Aquesta classe és utilitària (no instanciable) i només exposa
- * mètodes estàtics.
+ * <b>Nota:</b> Aquesta classe és utilitària (no instanciable) i només exposa mètodes estàtics.
  * </p>
  */
 public class CharacterCreator {
 
-    /**
-     * Constructor privat per evitar instàncies.
-     */
-    private CharacterCreator() {
-    }
-
-    /**
-     * Utilitat d'entrada per llegir valors des de consola amb validació.
-     */
+    /** Utilitat d'entrada per llegir valors des de consola amb validació. */
     private static final Getters getter = new Getters();
 
     /** Longitud mínima del nom del personatge. */
@@ -93,12 +79,19 @@ public class CharacterCreator {
      */
     private static final List<String> breeds = Breed.getNamesList();
 
+    private static int id = 1;
+
+    /**
+     * Constructor privat per evitar instàncies.
+     */
+    private CharacterCreator() {
+    }
+
     /**
      * Crea un nou personatge preguntant a l'usuari el nom i l'edat, i permetent
      * decidir si la generació d'estadístiques i raça serà automàtica o manual.
      *
-     * @return una nova instància de {@link Character} amb nom, edat, estadístiques
-     *         i raça.
+     * @return una nova instància de {@link Character} amb nom, edat, estadístiques i raça.
      */
     public static Character createNewCharacter() {
         String name = getName();
@@ -109,7 +102,11 @@ public class CharacterCreator {
                 MIN_AGE,
                 MAX_AGE);
 
-        boolean autoGenerate = getter.getBoolean("Vol generar el personatge automàticament? [S/N] ", true, "S", "N");
+        boolean autoGenerate = getter.getBoolean(
+                "Vol generar el personatge automàticament? [S/N] ",
+                true,
+                "S",
+                "N");
 
         Generation gen = autoGenerate ? autoGenerate() : manualGenerate();
 
@@ -121,11 +118,10 @@ public class CharacterCreator {
         return new Character(name, age, gen.stats(), gen.breed());
     }
 
-    private static int id = 1;
-
     public static Character createDebugCharacter() {
         String name = "test" + id++;
         int age = 12;
+
         Generation gen = autoGenerate();
         return new Character(name, age, gen.stats(), gen.breed());
     }
@@ -149,8 +145,7 @@ public class CharacterCreator {
      * Generació automàtica del personatge.
      *
      * <p>
-     * Fa servir {@link StatsBudget#generate(int)} per repartir
-     * {@value #TOTAL_POINTS}
+     * Fa servir {@link StatsBudget#generate(int)} per repartir {@value #TOTAL_POINTS}
      * i recuperar:
      * </p>
      * <ul>
@@ -158,8 +153,7 @@ public class CharacterCreator {
      * <li>la raça associada al resultat</li>
      * </ul>
      *
-     * @return un {@link Generation} amb estadístiques i raça generades
-     *         automàticament
+     * @return un {@link Generation} amb estadístiques i raça generades automàticament
      */
     private static Generation autoGenerate() {
         Result res = StatsBudget.generate(TOTAL_POINTS);
@@ -174,33 +168,27 @@ public class CharacterCreator {
      * </p>
      * <ol>
      * <li>Tria de raça mitjançant un menú.</li>
-     * <li>Repartiment manual de punts en 7 estadístiques, amb restriccions
-     * mínimes.</li>
-     * <li>Validació estricta: la suma ha de ser exactament
-     * {@value #TOTAL_POINTS}.</li>
+     * <li>Repartiment manual de punts en 7 estadístiques, amb restriccions mínimes.</li>
+     * <li>Validació estricta: la suma ha de ser exactament {@value #TOTAL_POINTS}.</li>
      * </ol>
      *
      * <p>
-     * Si la suma no és correcta, es mostra un avís i es torna a demanar tot el
-     * repartiment.
+     * Si la suma no és correcta, es mostra un avís i es torna a demanar tot el repartiment.
      * </p>
      *
      * @return un {@link Generation} amb estadístiques i raça escollides manualment
      */
     private static Generation manualGenerate() {
-        // 1) Raça
         int breedIdx = Menu.getOption(breeds, "Tria una raça:") - 1;
         Breed breed = Breed.values()[breedIdx];
 
-        // 2) Stats manuals (forcem suma TOTAL_POINTS)
         while (true) {
             System.out.println("\nReparteix " + TOTAL_POINTS + " punts en 7 estadístiques.");
             System.out.println("Mínim per estadística: " + MIN_STAT + " | Constitució mínim: " + MIN_CONSTITUTION);
 
             int strength = getter.getInteger("Força: ", "La força", MIN_STAT, MAX_STAT);
             int dexterity = getter.getInteger("Destresa: ", "La destresa", MIN_STAT, MAX_STAT);
-            int constitution = getter.getInteger("Constitució (vida): ", "La constitució", MIN_CONSTITUTION,
-                    MAX_STAT);
+            int constitution = getter.getInteger("Constitució (vida): ", "La constitució", MIN_CONSTITUTION, MAX_STAT);
             int intelligence = getter.getInteger("Intel·ligència: ", "L'intel·ligència", MIN_STAT, MAX_STAT);
             int wisdom = getter.getInteger("Saviesa: ", "La saviesa", MIN_STAT, MAX_STAT);
             int charisma = getter.getInteger("Carisma: ", "El carisma", MIN_STAT, MAX_STAT);
@@ -223,6 +211,14 @@ public class CharacterCreator {
         }
     }
 
+    /**
+     * Demana i valida el nom del personatge.
+     * <p>
+     * Es comprova la longitud i que el valor no sigui un nombre.
+     * </p>
+     *
+     * @return el nom vàlid introduït per l'usuari
+     */
     private static String getName() {
         boolean loop = true;
         String name = "";
@@ -245,6 +241,12 @@ public class CharacterCreator {
         return name;
     }
 
+    /**
+     * Mostra per consola un resum visual del personatge generat automàticament:
+     * raça, descripció, bonus i estadístiques.
+     *
+     * @param gen resultat de la generació automàtica
+     */
     private static void printAutoGeneratedSummary(Generation gen) {
         int[] stats = gen.stats();
         Breed breed = gen.breed();
@@ -304,16 +306,34 @@ public class CharacterCreator {
         System.out.print(sb.toString());
     }
 
+    /**
+     * Formata una estadística amb etiqueta i valor, fent servir codis ANSI.
+     *
+     * @param label etiqueta a mostrar
+     * @param value valor numèric
+     * @return text formatat per imprimir
+     */
     private static String statChip(String label, int value) {
         return Ansi.DARK_GRAY + label + ":" + Ansi.RESET + " " + Ansi.BOLD + value + Ansi.RESET;
     }
 
+    /**
+     * Divideix un text en línies sense superar una amplada màxima, trencant per espais.
+     *
+     * @param text     text d'entrada
+     * @param maxWidth amplada màxima per línia
+     * @return llista de línies
+     */
     private static List<String> wrap(String text, int maxWidth) {
         text = (text == null) ? "" : text.trim();
-        if (text.isEmpty())
+
+        if (text.isEmpty()) {
             return List.of();
-        if (text.length() <= maxWidth)
+        }
+
+        if (text.length() <= maxWidth) {
             return List.of(text);
+        }
 
         ArrayList<String> lines = new ArrayList<>();
         String[] words = text.split("\\s+");
@@ -330,8 +350,11 @@ public class CharacterCreator {
                 line.append(w);
             }
         }
-        if (!line.isEmpty())
+
+        if (!line.isEmpty()) {
             lines.add(line.toString());
+        }
+
         return lines;
     }
 }
