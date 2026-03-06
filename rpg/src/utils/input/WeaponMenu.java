@@ -130,21 +130,19 @@ public final class WeaponMenu {
         boolean onlyEquippable = false;
         TypeFilter typeFilter = TypeFilter.ALL;
 
-        MenuLoopState menuState = new MenuLoopState();
-
         while (true) {
-            boolean currentOnlyEquippable = onlyEquippable;
-            TypeFilter currentTypeFilter = typeFilter;
+            List<FilteredItem> filtered = buildFilteredItems(weapons, stats, onlyEquippable, typeFilter);
 
-            cls.clearAndPrint(
-                    () -> getFilteredMenuText(
-                            menuState,
-                            weapons,
-                            title,
-                            stats,
-                            currentOnlyEquippable,
-                            currentTypeFilter,
-                            false));
+            String renderedMenu = buildFilteredMenu(
+                    weapons,
+                    title,
+                    stats,
+                    filtered,
+                    onlyEquippable,
+                    typeFilter);
+
+            cls.clear();
+            System.out.print(renderedMenu);
 
             String in = getInput();
             if (in == null) {
@@ -154,13 +152,11 @@ public final class WeaponMenu {
 
             if (in.equalsIgnoreCase("f")) {
                 onlyEquippable = !onlyEquippable;
-                menuState.dirty = true;
                 continue;
             }
 
             if (in.equalsIgnoreCase("t")) {
                 typeFilter = typeFilter.next();
-                menuState.dirty = true;
                 continue;
             }
 
@@ -176,13 +172,13 @@ public final class WeaponMenu {
             }
 
             int idxInFiltered = opt - 2;
-            if (idxInFiltered < 0 || idxInFiltered >= menuState.filtered.size()) {
-                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", menuState.filtered.size() + 1);
+            if (idxInFiltered < 0 || idxInFiltered >= filtered.size()) {
+                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", filtered.size() + 1);
                 Menu.pause();
                 continue;
             }
 
-            return menuState.filtered.get(idxInFiltered).index;
+            return filtered.get(idxInFiltered).index;
         }
     }
 
@@ -213,21 +209,19 @@ public final class WeaponMenu {
         boolean onlyEquippable = state.isOnlyEquippable();
         TypeFilter typeFilter = state.getTypeFilter();
 
-        MenuLoopState menuState = new MenuLoopState();
-
         while (true) {
-            boolean currentOnlyEquippable = onlyEquippable;
-            TypeFilter currentTypeFilter = typeFilter;
+            List<FilteredItem> filtered = buildFilteredItems(weapons, stats, onlyEquippable, typeFilter);
 
-            cls.clearAndPrint(
-                    () -> getFilteredMenuText(
-                            menuState,
-                            weapons,
-                            title,
-                            stats,
-                            currentOnlyEquippable,
-                            currentTypeFilter,
-                            true));
+            String renderedMenu = getOrBuildFilteredMenu(
+                    weapons,
+                    title,
+                    stats,
+                    filtered,
+                    onlyEquippable,
+                    typeFilter);
+
+            cls.clear();
+            System.out.print(renderedMenu);
 
             String in = getInput();
             if (in == null) {
@@ -238,14 +232,12 @@ public final class WeaponMenu {
             if (in.equalsIgnoreCase("f")) {
                 onlyEquippable = !onlyEquippable;
                 state.setOnlyEquippable(onlyEquippable);
-                menuState.dirty = true;
                 continue;
             }
 
             if (in.equalsIgnoreCase("t")) {
                 typeFilter = typeFilter.next();
                 state.setTypeFilter(typeFilter);
-                menuState.dirty = true;
                 continue;
             }
 
@@ -263,8 +255,8 @@ public final class WeaponMenu {
             }
 
             int idxInFiltered = opt - 2;
-            if (idxInFiltered < 0 || idxInFiltered >= menuState.filtered.size()) {
-                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", menuState.filtered.size() + 1);
+            if (idxInFiltered < 0 || idxInFiltered >= filtered.size()) {
+                Prettier.warn("L'opció introduïda ha d'estar entre 1 i %d.", filtered.size() + 1);
                 Menu.pause();
                 continue;
             }
@@ -272,7 +264,7 @@ public final class WeaponMenu {
             state.setOnlyEquippable(onlyEquippable);
             state.setTypeFilter(typeFilter);
 
-            return menuState.filtered.get(idxInFiltered).index;
+            return filtered.get(idxInFiltered).index;
         }
     }
 
@@ -301,15 +293,6 @@ public final class WeaponMenu {
             TypeFilter typeFilter,
             int filteredHash,
             String renderedMenu) {
-    }
-
-    /**
-     * Estat mutable del bucle de render del menú filtrat.
-     */
-    private static final class MenuLoopState {
-        private boolean dirty = true;
-        private List<FilteredItem> filtered = List.of();
-        private String renderedMenu;
     }
 
     /**
@@ -568,26 +551,6 @@ public final class WeaponMenu {
         sb.append("Opció (número), [F] equipables, [T] tipus: ");
 
         return sb.toString();
-    }
-
-    private static String getFilteredMenuText(
-            MenuLoopState state,
-            List<Arsenal> weapons,
-            String title,
-            Statistics stats,
-            boolean onlyEquippable,
-            TypeFilter typeFilter,
-            boolean useSharedRenderCache) {
-
-        if (state.dirty) {
-            state.filtered = buildFilteredItems(weapons, stats, onlyEquippable, typeFilter);
-            state.renderedMenu = useSharedRenderCache
-                    ? getOrBuildFilteredMenu(weapons, title, stats, state.filtered, onlyEquippable, typeFilter)
-                    : buildFilteredMenu(weapons, title, stats, state.filtered, onlyEquippable, typeFilter);
-            state.dirty = false;
-        }
-
-        return state.renderedMenu;
     }
 
     private static String getOrBuildFilteredMenu(

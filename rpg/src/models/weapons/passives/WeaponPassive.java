@@ -30,6 +30,7 @@ public interface WeaponPassive {
         return switch (phase) {
             case START_TURN -> startTurn(weapon, ctx, rng);
             case BEFORE_ATTACK -> beforeAttack(weapon, ctx, rng);
+            case ROLL_CRIT -> rollCrit(weapon, ctx, rng);
             case MODIFY_DAMAGE -> modifyDamage(weapon, ctx, rng);
             case BEFORE_DEFENSE -> beforeDefense(weapon, ctx, rng);
             case AFTER_DEFENSE -> afterDefense(weapon, ctx, rng);
@@ -43,6 +44,9 @@ public interface WeaponPassive {
 
     /** Abans de calcular/modificar el dany (ideal per setMeta, checks, etc.). */
     default String beforeAttack(Weapon weapon, HitContext ctx, Random rng) { return null; }
+
+    /** x */
+    default String rollCrit(Weapon weapon, HitContext ctx, Random rng) { return null; }
 
     /** Per modificar el dany abans de defensar (ctx.addFlatDamage / ctx.multiplyDamage). */
     default String modifyDamage(Weapon weapon, HitContext ctx, Random rng) { return null; }

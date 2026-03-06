@@ -5,6 +5,7 @@ import java.util.Random;
 import models.characters.Character;
 import models.characters.Statistics;
 import models.weapons.Weapon;
+import utils.ui.Ansi;
 
 /**
  * Fàbrica d'efectes passius d'arma.
@@ -14,6 +15,8 @@ public final class Passives {
     private Passives() {
         // Classe utilitària: no instanciable.
     }
+
+    private static final String HP = Ansi.RED + "HP" + Ansi.RESET;
 
     /**
      * Crea un passiu que cura l'atacant un percentatge del dany real infligit.
@@ -28,20 +31,24 @@ public final class Passives {
                 double healAmount = ctx.damageDealt() * pct;
                 double realHealed = ctx.attacker().geStatistics().heal(healAmount);
 
-                if (realHealed <= 0) return null;
+                if (realHealed <= 0)
+                    return null;
 
-                return String.format("%s roba %.1f HP",
+                return String.format("%s roba %.1f %s",
                         ctx.attacker().getName(),
-                        realHealed);
+                        realHealed,
+                        HP);
             }
         };
     }
 
     /**
-     * Crea un passiu que aplica dany verdader (percentatge de la vida màxima del rival)
+     * Crea un passiu que aplica dany verdader (percentatge de la vida màxima del
+     * rival)
      * després d'un impacte real.
      *
-     * @param pct percentatge de vida màxima a convertir en dany (p.ex. 0.003 = 0.3%)
+     * @param pct percentatge de vida màxima a convertir en dany (p.ex. 0.003 =
+     *            0.3%)
      */
     public static WeaponPassive trueHarm(double pct) {
         return new WeaponPassive() {
@@ -50,13 +57,14 @@ public final class Passives {
                 double opponentMaxHealth = ctx.defender().geStatistics().getMaxHealth();
                 double extra = opponentMaxHealth * pct;
 
-                if (extra <= 0) return null;
+                if (extra <= 0)
+                    return null;
 
                 ctx.defender().geStatistics().damage(extra);
 
-                return String.format("%s connecta un dany verdader del %.2f%%",
+                return String.format("%s connecta un dany verdader del %d%%",
                         ctx.attacker().getName(),
-                        pct * 100.0);
+                        roundPercent(pct));
             }
         };
     }
@@ -66,7 +74,7 @@ public final class Passives {
      * augmenta el dany abans de defensar.
      *
      * @param thresholdLife ratio de vida (0..1). Ex: 0.30 = 30%
-     * @param damageBonus bonus multiplicatiu extra (0..1). Ex: 0.25 = +25%
+     * @param damageBonus   bonus multiplicatiu extra (0..1). Ex: 0.25 = +25%
      */
     public static WeaponPassive executor(double thresholdLife, double damageBonus) {
         return new WeaponPassive() {
@@ -76,14 +84,19 @@ public final class Passives {
                 Statistics defenderStats = defender.geStatistics();
 
                 double ratio = defenderStats.getHealth() / defenderStats.getMaxHealth();
-                if (ratio > thresholdLife) return null;
+                if (ratio > thresholdLife)
+                    return null;
 
                 ctx.multiplyDamage(1.0 + damageBonus);
 
-                return String.format("%s prepara una execució (+%.0f%% dany)",
+                return String.format("%s prepara una execució (+%d%% de dany)",
                         ctx.attacker().getName(),
-                        damageBonus * 100.0);
+                        roundPercent(damageBonus));
             }
         };
+    }
+
+    private static int roundPercent(double n) {
+        return (int) Math.round(n * 100.0);
     }
 }

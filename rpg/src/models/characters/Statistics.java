@@ -22,6 +22,12 @@ public class Statistics {
     private double health;
     private double mana;
 
+    private static final int MAX_CONSTITUTION_FULL_EFFECT = 20;
+    private static final double CONSTITUTION_VALUE = 50.0;
+
+    private static final double HEALTH_SOFTCAP_FACTOR = 0.08;
+    private static final double REGEN_SOFTCAP_FACTOR = 0.10;
+
     /**
      * Construeix les estadístiques a partir d'un array de 7 valors en ordre fix.
      *
@@ -36,7 +42,7 @@ public class Statistics {
         this.charisma = stats[5];
         this.luck = stats[6];
 
-        this.maxHealth = constitution * 50.0;
+        this.maxHealth = calculateMaxHealth(constitution);
         this.maxMana = intelligence * 30.0;
 
         this.health = maxHealth;
@@ -91,7 +97,8 @@ public class Statistics {
      * Regenera vida i mana segons constitució i intel·ligència, sense superar els màxims.
      */
     public void reg() {
-        double hp = constitution * 2.35;
+        double hp = calculateHealthRegen(constitution);
+
         double ma = intelligence * 0.9;
 
         health = affectClamp(health, hp, maxHealth, 0);
@@ -152,6 +159,35 @@ public class Statistics {
         double before = mana;
         mana = Math.min(maxMana, mana + amount);
         return mana - before;
+    }
+
+    /**
+     * Calcula la vida màxima amb soft cap suau a partir de 20 de constitució.
+     */
+    private double calculateMaxHealth(int con) {
+        double effectiveCon = softenStat(con, MAX_CONSTITUTION_FULL_EFFECT, HEALTH_SOFTCAP_FACTOR);
+        return effectiveCon * CONSTITUTION_VALUE;
+    }
+
+    /**
+     * Calcula la regeneració de vida amb un soft cap una mica més fort que la vida màxima.
+     */
+    private double calculateHealthRegen(int con) {
+        double effectiveCon = softenStat(con, MAX_CONSTITUTION_FULL_EFFECT, REGEN_SOFTCAP_FACTOR);
+        return effectiveCon * 2.35;
+    }
+
+    /**
+     * Fins al llindar, l'estadística té efecte complet.
+     * A partir d'aquí, cada punt extra aporta una mica menys que l'anterior.
+     */
+    private double softenStat(int stat, int threshold, double factor) {
+        if (stat <= threshold) {
+            return stat;
+        }
+
+        double extra = stat - (double) threshold;
+        return threshold + (extra / (1.0 + extra * factor));
     }
 
     /**

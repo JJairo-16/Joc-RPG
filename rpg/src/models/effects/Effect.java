@@ -12,53 +12,78 @@ import models.weapons.passives.HitContext;
  * Els efectes reals es creen implementant aquesta interfície (classe, anònim, etc.)
  * i gestionant el seu {@link EffectState}.
  * </p>
+ *
+ * <p>
+ * Els efectes poden reaccionar tant a les fases del pipeline com als esdeveniments
+ * registrats dins el {@link HitContext}. Per exemple, en una fase tardana poden
+ * consultar {@code ctx.hasEvent(HitContext.Event.ON_CRIT)} per saber si el cop
+ * ha resultat crític.
+ * </p>
  */
 public interface Effect {
 
     /**
      * Identificador estable per agrupar/actualitzar efectes iguals dins un contenidor.
      *
-     * <p>Ex: "SHIELD_CHARGES", "RAGE", "THORNS".</p>
+     * <p>
+     * Exemples: {@code "SHIELD_CHARGES"}, {@code "RAGE"}, {@code "THORNS"}.
+     * </p>
+     *
+     * @return clau estable de l'efecte
      */
     String key();
 
     /**
      * Prioritat d'execució (més alt = s'executa abans).
      *
-     * <p>Útil quan tens molts efectes i vols ordre consistent.</p>
+     * @return prioritat de l'efecte
      */
-    default int priority() { return 0; }
+    default int priority() {
+        return 0;
+    }
 
     /**
      * Regla d'apilament quan s'aplica un efecte amb la mateixa {@link #key()}.
+     *
+     * @return regla d'apilament
      */
-    default StackingRule stackingRule() { return StackingRule.REPLACE; }
+    default StackingRule stackingRule() {
+        return StackingRule.REPLACE;
+    }
 
     /**
      * Màxim de càrregues (si l'efecte en fa servir).
+     *
+     * @return màxim de càrregues
      */
-    default int maxCharges() { return 0; }
+    default int maxCharges() {
+        return 0;
+    }
 
     /**
      * Màxim de stacks (si l'efecte en fa servir).
+     *
+     * @return màxim d'apilaments
      */
-    default int maxStacks() { return 1; }
+    default int maxStacks() {
+        return 1;
+    }
 
     /**
      * Estat mutable de l'efecte.
      *
-     * <p>
-     * Nota: el contenidor d'efectes pot guardar aquesta instància i modificar-la.
-     * </p>
+     * @return estat intern de l'efecte
      */
     EffectState state();
 
     /**
-     * Indica si l'efecte està “actiu” per executar lògica.
+     * Indica si l'efecte està actiu.
      *
      * <p>
      * Per defecte, si està en cooldown no actua.
      * </p>
+     *
+     * @return {@code true} si l'efecte pot actuar
      */
     default boolean isActive() {
         return !state().onCooldown();
@@ -67,17 +92,7 @@ public interface Effect {
     /**
      * Indica si l'efecte ha expirat i s'hauria d'eliminar del contenidor.
      *
-     * <p>
-     * Per defecte:
-     * </p>
-     * <ul>
-     *   <li>Si maxCharges() > 0 → expira quan charges == 0</li>
-     *   <li>Si remainingTurns > 0 → expira quan remainingTurns == 0 (quan es tiqueja)</li>
-     * </ul>
-     *
-     * <p>
-     * Un efecte pot sobreescriure això si vol una política diferent.
-     * </p>
+     * @return {@code true} si es considera expirat
      */
     default boolean isExpired() {
         EffectState st = state();
@@ -86,32 +101,36 @@ public interface Effect {
             return st.charges() <= 0;
         }
 
-        // Si no usa càrregues, pot usar duració; si remainingTurns és 0,
-        // això pot significar "sense duració" o "acabat". El contenidor ho
-        // gestionarà; aquí fem una regla segura:
         return false;
     }
 
     /**
-     * Merge quan s'aplica un efecte amb la mateixa key (apilar/refrescar/...) .
+     * Merge quan s'aplica un efecte amb la mateixa key.
      *
-     * <p>
-     * El contenidor cridarà aquest mètode sobre l'efecte existent amb l'efecte nou.
-     * </p>
+     * @param incoming efecte entrant
      */
     default void mergeFrom(Effect incoming) {
-        // Política per defecte (simple): REPLACE no fa merge (el contenidor substituirà).
-        // STACK/REFRESH podrien sobreescriure aquest mètode.
+        // Política per defecte:
+        // REPLACE no fa merge i el contenidor substituirà l'efecte existent.
     }
 
     // ─────────────────────────────
     // Pipeline per fases
     // ─────────────────────────────
 
+    /**
+     * Punt d'entrada principal per executar la lògica de l'efecte en una fase.
+     *
+     * @param ctx context del cop
+     * @param phase fase actual
+     * @param rng generador aleatori
+     * @return resultat de l'execució
+     */
     default EffectResult onPhase(HitContext ctx, HitContext.Phase phase, Random rng) {
         return switch (phase) {
             case START_TURN -> startTurn(ctx, rng);
             case BEFORE_ATTACK -> beforeAttack(ctx, rng);
+            case ROLL_CRIT -> rollCrit(ctx, rng);
             case MODIFY_DAMAGE -> modifyDamage(ctx, rng);
             case BEFORE_DEFENSE -> beforeDefense(ctx, rng);
             case AFTER_DEFENSE -> afterDefense(ctx, rng);
@@ -120,30 +139,103 @@ public interface Effect {
         };
     }
 
-    /** Al inici del torn. */
-    default EffectResult startTurn(HitContext ctx, Random rng) { return EffectResult.none(); }
-
-    /** Abans de calcular/modificar el dany (ideal per checks i meta). */
-    default EffectResult beforeAttack(HitContext ctx, Random rng) { return EffectResult.none(); }
-
-    /** Per modificar el dany abans de defensar (ctx.addFlatDamage / ctx.multiplyDamage). */
-    default EffectResult modifyDamage(HitContext ctx, Random rng) { return EffectResult.none(); }
-
-    /** Abans d'aplicar DEFEND/DODGE (ideal per escuts / mitigació). */
-    default EffectResult beforeDefense(HitContext ctx, Random rng) { return EffectResult.none(); }
-
-    /** Després de DEFEND/DODGE (ja tens ctx.defenderResult + damageDealt). */
-    default EffectResult afterDefense(HitContext ctx, Random rng) { return EffectResult.none(); }
-
-    /** Després d'un impacte real (normalment ctx.damageDealt() > 0). */
-    default EffectResult afterHit(HitContext ctx, Random rng) { return EffectResult.none(); }
+    /**
+     * Lògica a l'inici del torn.
+     *
+     * @param ctx context del cop
+     * @param rng generador aleatori
+     * @return resultat de l'efecte
+     */
+    default EffectResult startTurn(HitContext ctx, Random rng) {
+        return EffectResult.none();
+    }
 
     /**
-     * Final del torn (ideal per tiquejar duració/cooldown).
+     * Lògica abans de l'atac.
+     *
+     * @param ctx context del cop
+     * @param rng generador aleatori
+     * @return resultat de l'efecte
+     */
+    default EffectResult beforeAttack(HitContext ctx, Random rng) {
+        return EffectResult.none();
+    }
+
+    /**
+     * Lògica durant la resolució del crític.
+     *
+     * <p>
+     * Aquesta fase és ideal per fer coses com:
+     * </p>
+     * <ul>
+     * <li>forçar 100% crític</li>
+     * <li>prohibir crític</li>
+     * <li>augmentar o reduir la probabilitat de crític</li>
+     * <li>canviar el multiplicador del crític</li>
+     * </ul>
+     *
+     * @param ctx context del cop
+     * @param rng generador aleatori
+     * @return resultat de l'efecte
+     */
+    default EffectResult rollCrit(HitContext ctx, Random rng) {
+        return EffectResult.none();
+    }
+
+    /**
+     * Lògica per modificar el dany abans de defensar.
+     *
+     * @param ctx context del cop
+     * @param rng generador aleatori
+     * @return resultat de l'efecte
+     */
+    default EffectResult modifyDamage(HitContext ctx, Random rng) {
+        return EffectResult.none();
+    }
+
+    /**
+     * Lògica abans d'aplicar DEFEND/DODGE.
+     *
+     * @param ctx context del cop
+     * @param rng generador aleatori
+     * @return resultat de l'efecte
+     */
+    default EffectResult beforeDefense(HitContext ctx, Random rng) {
+        return EffectResult.none();
+    }
+
+    /**
+     * Lògica després de DEFEND/DODGE.
+     *
+     * @param ctx context del cop
+     * @param rng generador aleatori
+     * @return resultat de l'efecte
+     */
+    default EffectResult afterDefense(HitContext ctx, Random rng) {
+        return EffectResult.none();
+    }
+
+    /**
+     * Lògica després d'un impacte real.
+     *
+     * @param ctx context del cop
+     * @param rng generador aleatori
+     * @return resultat de l'efecte
+     */
+    default EffectResult afterHit(HitContext ctx, Random rng) {
+        return EffectResult.none();
+    }
+
+    /**
+     * Final del torn.
      *
      * <p>
      * Per defecte: baixa cooldown i duració si existeixen.
      * </p>
+     *
+     * @param ctx context del cop
+     * @param rng generador aleatori
+     * @return resultat de l'efecte
      */
     default EffectResult endTurn(HitContext ctx, Random rng) {
         state().tickCooldown();

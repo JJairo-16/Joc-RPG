@@ -73,10 +73,6 @@ public class GameLoop {
      * Mostra el resultat final del combat.
      */
     private void finish(Winner winner) {
-        cls.clearAndPrint(() -> generateFFinishText(winner));
-    }
-
-    private String generateFFinishText(Winner winner) {
         StringBuilder sb = new StringBuilder(2048);
 
         sb.append("====================================\n");
@@ -110,7 +106,7 @@ public class GameLoop {
         sb.append('\n');
         sb.append("====================================\n");
 
-        return sb.toString();
+        System.out.print(sb.toString());
     }
 
     /**
@@ -141,7 +137,8 @@ public class GameLoop {
                     break;
 
                 case 5:
-                    cls.clearAndPrint(() -> getPlayerInfo(player));
+                    cls.clear();
+                    getPlayerInfo(player);
                     Menu.pause();
                     break;
 
@@ -211,7 +208,7 @@ public class GameLoop {
      * - Prettier ha estat adaptat a appendTitle(StringBuilder, ...)
      * - CombatSystem ha estat adaptat a appendStatusBars(StringBuilder, ...)
      */
-    private String getPlayerInfo(Character player) {
+    private void getPlayerInfo(Character player) {
         Statistics stats = player.geStatistics();
         Breed breed = player.getBreed();
         Weapon weapon = player.getWeapon();
@@ -237,7 +234,7 @@ public class GameLoop {
             sb.append(HR);
         }
 
-        return sb.toString();
+        System.out.print(sb.toString());
     }
 
     private void appendPlayerCard(StringBuilder sb, Character p, Breed breed, Statistics s, Weapon weapon) {

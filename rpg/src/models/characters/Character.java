@@ -118,7 +118,7 @@ public class Character {
             return new Result(0, name + " ha bloquejat... sense raó aparent.");
         }
 
-        double recivied = attack / 2.0;
+        double recivied = attack * 0.6;
         stats.damage(recivied);
         return new Result(recivied, name + " ha bloquejat l'atac.");
     }

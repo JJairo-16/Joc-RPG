@@ -22,14 +22,14 @@ public enum Arsenal {
     EXPLOSIVE_CROSSBOW(
             "Ballesta explosiva",
             "Una ballesta inestable que converteix cada tret en una aposta.",
-            80, 0.12, 1.6,
+            80, 0.12, 1.45,
             RANGE,
             Skills::explosiveShot),
 
     VAMPIRICS_DAGGERS(
             "Dagues vampíriques",
             "Dues fulles àgils que colpegen dues vegades i et retornen vida amb cada impacte.",
-            42, 0.16, 1.35,
+            42, 0.16, 1.32,
             PHYSICAL,
             Skills::nothing,
             lifeSteal(0.10)),
@@ -45,7 +45,7 @@ public enum Arsenal {
     SCIMITAR(
             "Cimitarra del desert",
             "Una fulla corba i elegant dissenyada per a cops ràpids i precisos. Els seus talls són fluids i letals en mans hàbils.",
-            80, 0.20, 1.4,
+            80, 0.20, 1.32,
             PHYSICAL,
             Skills::nothing),
 
@@ -54,7 +54,7 @@ public enum Arsenal {
             "Una arma capritxosa que pot disparar entre un i quatre projectils. "
                     + "Cada tret consecutiu és més difícil d'encertar... "
                     + "però la sort pot desafiar el destí.",
-            44, 0.15, 1.4,
+            44, 0.15, 1.32,
             RANGE,
             Skills::luckyBallista),
     GRIMORIE(
@@ -69,7 +69,7 @@ public enum Arsenal {
             "Daga Perforasang",
             "Una daga lleugera dissenyada per travessar defenses. "
                     + "La seva fulla estreta troba els punts febles amb facilitat.",
-            28, 0.16, 1.45,
+            28, 0.16, 1.41,
             RANGE,
             Skills::perforatingThrow,
             trueHarm(0.003)),
@@ -78,7 +78,7 @@ public enum Arsenal {
             "Una espasa concebuda per culminar el combat. "
                     + "Quan l'enemic es troba al llindar de la derrota, "
                     + "la seva fulla colpeja amb una determinació implacable.",
-            76, 0.18, 1.4,
+            76, 0.18, 1.34,
             PHYSICAL,
             Skills::nothing,
             executor(0.30, 0.25)),
@@ -86,7 +86,7 @@ public enum Arsenal {
             "Teixidor del temps",
             "Un bastó antic que distorsiona el flux temporal. "
                     + "Els seus atacs poden repetir-se en un eco del passat.",
-            88, 0.14, 1.60,
+            88, 0.14, 1.46,
             MAGICAL,
             Skills::chronoWeave,
             95);
