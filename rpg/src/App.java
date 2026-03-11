@@ -15,8 +15,8 @@ public class App {
             WeaponMenu.preloadCards();
         }
 
-        Character p1 = CharacterCreator.createDebugCharacter();
-        Character p2 = CharacterCreator.createDebugCharacter();
+        Character p1 = CharacterCreator.createNewCharacter();
+        Character p2 = CharacterCreator.createNewCharacter();
         GameLoop game = new GameLoop(p1, p2);
         game.init();
     }

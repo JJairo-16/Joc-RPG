@@ -64,6 +64,7 @@ public class GrimoriCodeGenerator {
      */
     public String generate() {
         StringBuilder code = sb;
+        code.setLength(0);
 
         int last = 0;
         boolean hasLast = false;

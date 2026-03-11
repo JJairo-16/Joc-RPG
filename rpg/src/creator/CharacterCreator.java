@@ -2,6 +2,7 @@ package creator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import models.characters.Breed;
 import models.characters.Character;
@@ -317,6 +318,8 @@ public class CharacterCreator {
         return Ansi.DARK_GRAY + label + ":" + Ansi.RESET + " " + Ansi.BOLD + value + Ansi.RESET;
     }
 
+    private static final Pattern WRAP_PATTERN = Pattern.compile("\\s+");
+
     /**
      * Divideix un text en línies sense superar una amplada màxima, trencant per espais.
      *
@@ -336,7 +339,7 @@ public class CharacterCreator {
         }
 
         ArrayList<String> lines = new ArrayList<>();
-        String[] words = text.split("\\s+");
+        String[] words = WRAP_PATTERN.split(text);
         StringBuilder line = new StringBuilder();
 
         for (String w : words) {
