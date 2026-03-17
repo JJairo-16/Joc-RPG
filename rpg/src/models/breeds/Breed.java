@@ -1,6 +1,8 @@
-package models.characters;
+package models.breeds;
 
 import java.util.List;
+
+import models.characters.Stat;
 
 /**
  * Enumeració de races disponibles i el seu bonus d'estadística principal.

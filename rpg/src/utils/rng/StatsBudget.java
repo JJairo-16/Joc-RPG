@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.random.RandomGeneratorFactory;
 
+import models.breeds.Breed;
 import models.characters.*;
 
 /**

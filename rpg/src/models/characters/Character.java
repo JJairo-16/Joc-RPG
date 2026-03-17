@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
+import models.breeds.Breed;
 import models.effects.Effect;
 import models.effects.EffectResult;
 import models.effects.StackingRule;
@@ -24,15 +25,15 @@ public class Character {
     /** Mínim específic per a la Constitució (vida). */
     private static final int MIN_CONSTITUTION = MIN_STAT + 2;
 
-    private final String name;
-    private final int age;
-    private final Breed breed;
+    protected final String name;
+    protected final int age;
+    protected final Breed breed;
 
-    private final Statistics stats;
-    private Weapon weapon;
+    protected final Statistics stats;
+    protected Weapon weapon;
 
-    private final Random rng = new Random();
-    private final List<Effect> effects = new ArrayList<>();
+    protected final Random rng = new Random();
+    protected final List<Effect> effects = new ArrayList<>();
 
     /**
      * Crea un personatge i valida: nom, edat, longitud d'stats (7), mínims i suma
@@ -99,12 +100,16 @@ public class Character {
      */
     public AttackResult attack() {
         if (weapon == null) {
-            return new AttackResult(
-                    WeaponType.PHYSICAL.getBasicDamage(5, stats),
-                    "ataca amb les mans desnudes.");
+            return attackUnarmed();
         }
 
         return weapon.attack(stats, rng);
+    }
+
+    protected AttackResult attackUnarmed() {
+        return new AttackResult(
+                    WeaponType.PHYSICAL.getBasicDamage(5, stats),
+                    "ataca amb les mans desnudes.");
     }
 
     /**
@@ -130,15 +135,11 @@ public class Character {
      * @return resultat amb dany rebut i missatge
      */
     public Result dodge(double attack) {
-        if (attack <= 0) {
+        DodgeResult dodgeResult = internalDodge(attack);
+        if (dodgeResult.noAttack)
             return new Result(0, name + " ha esquivat... l'aire.");
-        }
 
-        double dodgeProb = (stats.getDexterity() - 10) * 3.33;
-        dodgeProb += stats.getLuck() * 0.002;
-
-        double multier = (rng.nextDouble() < dodgeProb ? 0 : 1);
-        double recivied = attack * multier;
+        double recivied = dodgeResult.recived();
         stats.damage(recivied);
 
         if (recivied <= 0) {
@@ -146,6 +147,27 @@ public class Character {
         }
 
         return new Result(recivied, name + " ha rebut l'atac de ple.");
+    }
+
+    protected record DodgeResult(double recived, boolean noAttack) {
+    }
+
+    protected DodgeResult internalDodge(double attack) {
+        if (attack <= 0) {
+            return new DodgeResult(0, true);
+        }
+
+        double dodgeProb = tryToDodge();
+        double multier = (rng.nextDouble() < dodgeProb ? 0 : 1);
+        double recivied = attack * multier;
+
+        return new DodgeResult(recivied, false);
+    }
+
+    protected double tryToDodge() {
+        double dodgeProb = (stats.getDexterity() - 10) * 3.33;
+        dodgeProb += stats.getLuck() * 0.002;
+        return dodgeProb;
     }
 
     /**
@@ -175,12 +197,14 @@ public class Character {
      * Aplica un efecte al personatge segons la seva {@link StackingRule}.
      *
      * <p>
-     * Si ja existeix un efecte amb la mateixa {@link Effect#key()}, aplica la regla:
+     * Si ja existeix un efecte amb la mateixa {@link Effect#key()}, aplica la
+     * regla:
      * </p>
      * <ul>
      * <li>IGNORE: no fa res</li>
      * <li>REPLACE: substitueix l'antic</li>
-     * <li>REFRESH / STACK: crida {@link Effect#mergeFrom(Effect)} sobre l'existent</li>
+     * <li>REFRESH / STACK: crida {@link Effect#mergeFrom(Effect)} sobre
+     * l'existent</li>
      * </ul>
      *
      * @param incoming efecte entrant
@@ -243,7 +267,8 @@ public class Character {
      * Executa els efectes del personatge en una fase del combat.
      *
      * <p>
-     * Afegeix els missatges al paràmetre {@code out} i elimina els efectes expirats.
+     * Afegeix els missatges al paràmetre {@code out} i elimina els efectes
+     * expirats.
      * </p>
      *
      * @param ctx   context de l'impacte
@@ -273,7 +298,7 @@ public class Character {
     /**
      * Elimina efectes expirats.
      */
-    private void cleanupExpiredEffects() {
+    protected void cleanupExpiredEffects() {
         if (effects.isEmpty()) {
             return;
         }
@@ -334,7 +359,7 @@ public class Character {
         }
     }
 
-    private static int[] applyBreed(int[] stats, Breed breed) {
+    protected static int[] applyBreed(int[] stats, Breed breed) {
         Stat[] statValues = Stat.values();
         int[] effectiveStats = stats.clone();
 

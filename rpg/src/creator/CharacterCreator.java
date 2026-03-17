@@ -4,7 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import models.characters.Breed;
+import models.breeds.Breed;
+import models.breeds.Dwarf;
+import models.breeds.Elf;
+import models.breeds.Gnome;
+import models.breeds.Halfling;
+import models.breeds.Orc;
+import models.breeds.Tiefling;
 import models.characters.Character;
 import utils.input.Getters;
 import utils.input.Menu;
@@ -18,16 +24,20 @@ import utils.ui.Prettier;
  * Gestor de creació de personatges.
  *
  * <p>
- * Aquesta classe centralitza la lògica per crear una instància de {@link Character}
+ * Aquesta classe centralitza la lògica per crear una instància de
+ * {@link Character}
  * demanant dades per consola. Permet dues vies de generació:
  * </p>
  * <ul>
- * <li><b>Automàtica</b>: reparteix els punts d'estadístiques i assigna una raça mitjançant {@link StatsBudget}.</li>
- * <li><b>Manual</b>: l'usuari tria la raça i reparteix exactament {@value #TOTAL_POINTS} punts entre 7 estadístiques.</li>
+ * <li><b>Automàtica</b>: reparteix els punts d'estadístiques i assigna una raça
+ * mitjançant {@link StatsBudget}.</li>
+ * <li><b>Manual</b>: l'usuari tria la raça i reparteix exactament
+ * {@value #TOTAL_POINTS} punts entre 7 estadístiques.</li>
  * </ul>
  *
  * <p>
- * <b>Nota:</b> Aquesta classe és utilitària (no instanciable) i només exposa mètodes estàtics.
+ * <b>Nota:</b> Aquesta classe és utilitària (no instanciable) i només exposa
+ * mètodes estàtics.
  * </p>
  */
 public class CharacterCreator {
@@ -92,7 +102,8 @@ public class CharacterCreator {
      * Crea un nou personatge preguntant a l'usuari el nom i l'edat, i permetent
      * decidir si la generació d'estadístiques i raça serà automàtica o manual.
      *
-     * @return una nova instància de {@link Character} amb nom, edat, estadístiques i raça.
+     * @return una nova instància de {@link Character} amb nom, edat, estadístiques
+     *         i raça.
      */
     public static Character createNewCharacter() {
         String name = getName();
@@ -116,7 +127,7 @@ public class CharacterCreator {
             Menu.pause();
         }
 
-        return new Character(name, age, gen.stats(), gen.breed());
+        return convert(name, age, gen);
     }
 
     public static Character createDebugCharacter() {
@@ -124,7 +135,7 @@ public class CharacterCreator {
         int age = 12;
 
         Generation gen = autoGenerate();
-        return new Character(name, age, gen.stats(), gen.breed());
+        return convert(name, age, gen);
     }
 
     /**
@@ -146,7 +157,8 @@ public class CharacterCreator {
      * Generació automàtica del personatge.
      *
      * <p>
-     * Fa servir {@link StatsBudget#generate(int)} per repartir {@value #TOTAL_POINTS}
+     * Fa servir {@link StatsBudget#generate(int)} per repartir
+     * {@value #TOTAL_POINTS}
      * i recuperar:
      * </p>
      * <ul>
@@ -154,7 +166,8 @@ public class CharacterCreator {
      * <li>la raça associada al resultat</li>
      * </ul>
      *
-     * @return un {@link Generation} amb estadístiques i raça generades automàticament
+     * @return un {@link Generation} amb estadístiques i raça generades
+     *         automàticament
      */
     private static Generation autoGenerate() {
         Result res = StatsBudget.generate(TOTAL_POINTS);
@@ -169,12 +182,15 @@ public class CharacterCreator {
      * </p>
      * <ol>
      * <li>Tria de raça mitjançant un menú.</li>
-     * <li>Repartiment manual de punts en 7 estadístiques, amb restriccions mínimes.</li>
-     * <li>Validació estricta: la suma ha de ser exactament {@value #TOTAL_POINTS}.</li>
+     * <li>Repartiment manual de punts en 7 estadístiques, amb restriccions
+     * mínimes.</li>
+     * <li>Validació estricta: la suma ha de ser exactament
+     * {@value #TOTAL_POINTS}.</li>
      * </ol>
      *
      * <p>
-     * Si la suma no és correcta, es mostra un avís i es torna a demanar tot el repartiment.
+     * Si la suma no és correcta, es mostra un avís i es torna a demanar tot el
+     * repartiment.
      * </p>
      *
      * @return un {@link Generation} amb estadístiques i raça escollides manualment
@@ -321,7 +337,8 @@ public class CharacterCreator {
     private static final Pattern WRAP_PATTERN = Pattern.compile("\\s+");
 
     /**
-     * Divideix un text en línies sense superar una amplada màxima, trencant per espais.
+     * Divideix un text en línies sense superar una amplada màxima, trencant per
+     * espais.
      *
      * @param text     text d'entrada
      * @param maxWidth amplada màxima per línia
@@ -359,5 +376,20 @@ public class CharacterCreator {
         }
 
         return lines;
+    }
+
+    private static Character convert(String name, int age, Generation g) {
+        Breed b = g.breed();
+        int[] stats = g.stats;
+
+        return switch (b) {
+            case ORC -> new Orc(name, age, stats);
+            case ELF -> new Elf(name, age, stats);
+            case DWARF -> new Dwarf(name, age, stats);
+            case GNOME -> new Gnome(name, age, stats);
+            case TIEFLING -> new Tiefling(name, age, stats);
+            case HALFLING -> new Halfling(name, age, stats);
+            default -> new Character(name, age, stats, b);
+        };
     }
 }

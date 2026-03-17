@@ -5,7 +5,7 @@ import java.util.List;
 import combat.Action;
 import combat.CombatSystem;
 import combat.Winner;
-import models.characters.Breed;
+import models.breeds.Breed;
 import models.characters.Character;
 import models.characters.Statistics;
 import models.weapons.Arsenal;

@@ -105,6 +105,15 @@ public class Statistics {
         mana = affectClamp(mana, ma, maxMana, 0);
     }
 
+    public void reg(double hpBonus, double manaBonus) {
+        double hp = calculateHealthRegen(constitution * hpBonus);
+
+        double ma = (intelligence * manaBonus) * 0.9;
+
+        health = affectClamp(health, hp, maxHealth, 0);
+        mana = affectClamp(mana, ma, maxMana, 0);
+    }
+
     /**
      * Aplica dany a la vida (mai baixa de 0).
      *
@@ -172,7 +181,7 @@ public class Statistics {
     /**
      * Calcula la regeneració de vida amb un soft cap una mica més fort que la vida màxima.
      */
-    private double calculateHealthRegen(int con) {
+    private double calculateHealthRegen(double con) {
         double effectiveCon = softenStat(con, MAX_CONSTITUTION_FULL_EFFECT, REGEN_SOFTCAP_FACTOR);
         return effectiveCon * 2.35;
     }
@@ -181,12 +190,12 @@ public class Statistics {
      * Fins al llindar, l'estadística té efecte complet.
      * A partir d'aquí, cada punt extra aporta una mica menys que l'anterior.
      */
-    private double softenStat(int stat, int threshold, double factor) {
+    private double softenStat(double stat, int threshold, double factor) {
         if (stat <= threshold) {
             return stat;
         }
 
-        double extra = stat - (double) threshold;
+        double extra = stat - threshold;
         return threshold + (extra / (1.0 + extra * factor));
     }
 
